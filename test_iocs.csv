@@ -1,0 +1,6 @@
+IOC,Type
+8.8.8.8,ip
+example.com,domain
+5d41402abc4b2a76b9719d911017c592,md5
+test@example.com,email
+https://example.com/path,url

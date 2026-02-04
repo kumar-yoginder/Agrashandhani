@@ -1,0 +1,5 @@
+requests==2.32.3
+python-dotenv==1.0.1
+
+# Optional (install if you need direct urllib3 access)
+# urllib3==2.6.3
