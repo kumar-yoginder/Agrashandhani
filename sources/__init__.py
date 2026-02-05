@@ -5,13 +5,15 @@ from sources.virustotal import VirusTotalSource
 from sources.malwarebazaar import MalwareBazaarSource
 from sources.hybrid_analysis import HybridAnalysisSource
 from sources.malshare import MalShareSource
+from sources.otx import OTXSource
 
 # Source registry
 SOURCES = {
     "virustotal": VirusTotalSource(),
     "malwarebazaar": MalwareBazaarSource(),
     "hybrid_analysis": HybridAnalysisSource(),
-    "malshare": MalShareSource()
+    "malshare": MalShareSource(),
+    "otx": OTXSource()
 }
 
 
