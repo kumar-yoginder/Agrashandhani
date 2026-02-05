@@ -17,6 +17,8 @@ class VirusTotalSource(Source):
     
     def __init__(self):
         super().__init__("virustotal")
+        self.api_url = VT_API_URL
+        self.api_key = VT_KEY
     
     def query(self, ioc_type: str, value: str) -> dict:
         """
@@ -30,29 +32,29 @@ class VirusTotalSource(Source):
             - domain: Query by domain name
             - url: Query by URL
         """
-        if not VT_KEY:
+        if not self.api_key:
             return {"error": "VirusTotal API key missing. Get it from https://www.virustotal.com/gui/my-apikey"}
         
-        headers = {"x-apikey": VT_KEY}
+        headers = {"x-apikey": self.api_key}
         
         try:
             # Handle hash types (md5, sha1, sha256)
             if ioc_type.startswith("hash_"):
-                url = f"{VT_API_URL}/files/{value}"
+                url = f"{self.api_url}/files/{value}"
             
             # Handle IP addresses (IPv4 and IPv6)
             elif ioc_type.startswith("ip_"):
-                url = f"{VT_API_URL}/ip_addresses/{value}"
+                url = f"{self.api_url}/ip_addresses/{value}"
             
             # Handle domains
             elif ioc_type == "domain":
-                url = f"{VT_API_URL}/domains/{value}"
+                url = f"{self.api_url}/domains/{value}"
             
             # Handle URLs - requires special encoding
             elif ioc_type == "url":
                 # URL identifier: base64 without padding
                 url_id = base64.urlsafe_b64encode(value.encode()).decode().rstrip('=')
-                url = f"{VT_API_URL}/urls/{url_id}"
+                url = f"{self.api_url}/urls/{url_id}"
             
             else:
                 return {"error": f"VirusTotal does not support {ioc_type}"}
