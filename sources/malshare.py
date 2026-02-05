@@ -5,13 +5,10 @@ Queries the MalShare API for malware samples and threat intelligence.
 Reference: https://malshare.com/
 """
 
-import os
 from typing import Dict, Any
 from sources.base import Source
 from clients import RateLimitedClient
-
-
-MALSHARE_API_URL = "https://malshare.com/api.php"
+from config import MALSHARE_API_URL, MALSHARE_API_KEY
 
 
 class MalShareSource(Source):
@@ -38,16 +35,10 @@ class MalShareSource(Source):
     """
     
     def __init__(self):
-        """Initialize MalShare source with API key from environment."""
+        """Initialize MalShare source with API key from config."""
         super().__init__("malshare")
-        self.api_key = os.getenv('MALSHARE_API_KEY', '')
+        self.api_key = MALSHARE_API_KEY
         self.api_url = MALSHARE_API_URL
-        
-        if not self.api_key:
-            print(
-                "Warning: MalShare API key not found. Set MALSHARE_API_KEY environment variable. "
-                "Get API key from https://malshare.com/register.php"
-            )
     
     def query(self, ioc_type: str, value: str) -> Dict[str, Any]:
         """

@@ -5,13 +5,10 @@ VxAPI Wrapper: https://github.com/PayloadSecurity/VxAPI
 """
 from sources.base import Source
 from clients import RateLimitedClient
-from config import HA_KEY
+from config import HA_KEY, HA_API_URL
 
 
 ha_client = RateLimitedClient(max_retries=3)
-
-# Hybrid Analysis API base URL
-HYBRID_ANALYSIS_API_URL = "https://www.hybrid-analysis.com/api/v2"
 
 
 class HybridAnalysisSource(Source):
@@ -32,7 +29,8 @@ class HybridAnalysisSource(Source):
     
     def __init__(self):
         super().__init__("hybrid_analysis")
-        self.api_url = HYBRID_ANALYSIS_API_URL
+        self.api_url = HA_API_URL
+        self.api_key = HA_KEY
     
     def query(self, ioc_type: str, value: str) -> dict:
         """

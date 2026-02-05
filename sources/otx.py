@@ -5,14 +5,10 @@ Queries the AlienVault OTX API for threat intelligence indicators.
 Reference: https://otx.alienvault.com/
 """
 
-import os
-import requests
 from typing import Dict, Any
 from sources.base import Source
 from clients import RateLimitedClient
-
-
-OTX_API_URL = "https://otx.alienvault.com/api/v1"
+from config import OTX_API_KEY, OTX_API_URL
 
 
 class OTXSource(Source):
@@ -47,16 +43,10 @@ class OTXSource(Source):
     """
     
     def __init__(self):
-        """Initialize OTX source with API key from environment."""
+        """Initialize OTX source with API key from config."""
         super().__init__("otx")
-        self.api_key = os.getenv('OTX_API_KEY', '')
+        self.api_key = OTX_API_KEY
         self.api_url = OTX_API_URL
-        
-        if not self.api_key:
-            print(
-                "Warning: OTX API key not found. Set OTX_API_KEY environment variable. "
-                "Get API key from https://otx.alienvault.com/account/profile"
-            )
     
     def query(self, ioc_type: str, value: str) -> Dict[str, Any]:
         """

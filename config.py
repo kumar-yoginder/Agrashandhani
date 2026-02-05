@@ -12,15 +12,20 @@ load_dotenv()
 DB_FILE = "threat_intel_db.json"
 
 # =====================================================
-# API KEYS & ENDPOINTS
+# API KEYS & ENDPOINTS (Loaded once from .env)
 # =====================================================
-VT_KEY = os.getenv("VT_API_KEY")
-HA_KEY = os.getenv("HA_API_KEY")
-OPSWAT_KEY = os.getenv("OPSWAT_API_KEY")
-MB_API_KEY = os.getenv("MB_API_KEY")
+VT_KEY = os.getenv("VT_API_KEY", "")
+HA_KEY = os.getenv("HA_API_KEY", "")
+MB_API_KEY = os.getenv("MB_API_KEY", "")
+MALSHARE_API_KEY = os.getenv("MALSHARE_API_KEY", "")
+OTX_API_KEY = os.getenv("OTX_API_KEY", "")
 
+# API URLs
 MB_API_URL = "https://mb-api.abuse.ch/api/v1/"
 VT_API_URL = "https://www.virustotal.com/api/v3"
+OTX_API_URL = "https://otx.alienvault.com/api/v1"
+MALSHARE_API_URL = "https://malshare.com/api.php"
+HA_API_URL = "https://www.hybrid-analysis.com/api/v2"
 
 # =====================================================
 # IOC TYPES REFERENCE
