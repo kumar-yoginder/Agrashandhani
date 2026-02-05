@@ -131,7 +131,7 @@ class OTXSource(Source):
                 "Content-Type": "application/json"
             }
             
-            otx_client = RateLimitedClient(rate_limit=10, time_window=1)  # 10 req/sec
+            otx_client = RateLimitedClient(max_retries=3)
             response = otx_client.request(
                 "GET",
                 url,
@@ -195,7 +195,7 @@ class OTXSource(Source):
                 "Content-Type": "application/json"
             }
             
-            otx_client = RateLimitedClient(rate_limit=10, time_window=1)
+            otx_client = RateLimitedClient(max_retries=3)
             response = otx_client.request(
                 "GET",
                 url,
