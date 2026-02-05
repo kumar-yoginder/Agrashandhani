@@ -17,6 +17,7 @@ DB_FILE = "threat_intel_db.json"
 VT_KEY = os.getenv("VT_API_KEY")
 HA_KEY = os.getenv("HA_API_KEY")
 OPSWAT_KEY = os.getenv("OPSWAT_API_KEY")
+MB_API_KEY = os.getenv("MB_API_KEY")
 
 MB_API_URL = "https://mb-api.abuse.ch/api/v1/"
 VT_API_URL = "https://www.virustotal.com/api/v3"
