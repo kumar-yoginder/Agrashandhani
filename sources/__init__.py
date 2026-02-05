@@ -4,14 +4,14 @@ Threat Intelligence Sources Package
 from sources.virustotal import VirusTotalSource
 from sources.malwarebazaar import MalwareBazaarSource
 from sources.hybrid_analysis import HybridAnalysisSource
-from sources.metadefender import MetaDefenderSource
+from sources.malshare import MalShareSource
 
 # Source registry
 SOURCES = {
     "virustotal": VirusTotalSource(),
     "malwarebazaar": MalwareBazaarSource(),
     "hybrid_analysis": HybridAnalysisSource(),
-    "metadefender": MetaDefenderSource()
+    "malshare": MalShareSource()
 }
 
 
