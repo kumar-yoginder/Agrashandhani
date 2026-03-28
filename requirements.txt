@@ -3,3 +3,9 @@ python-dotenv==1.0.1
 
 # Optional (install if you need direct urllib3 access)
 # urllib3==2.6.3
+
+# Optional: MongoDB support (install when MONGODB_URI is set)
+# pymongo>=4.6.0
+
+# Optional: PostgreSQL support (install when POSTGRES_URI is set)
+# psycopg2-binary>=2.9.9

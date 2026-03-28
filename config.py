@@ -9,7 +9,15 @@ load_dotenv()
 # =====================================================
 # DATABASE
 # =====================================================
-DB_FILE = "threat_intel_db.json"
+DB_FILE = os.getenv("DB_FILE", "threat_intel_db.json")
+
+# Set MONGODB_URI to use MongoDB instead of the local JSON file.
+# Example: mongodb://user:pass@localhost:27017/threatintel
+MONGODB_URI = os.getenv("MONGODB_URI", "")
+
+# Set POSTGRES_URI to use PostgreSQL instead of the local JSON file.
+# Example: postgresql://user:pass@localhost:5432/threatintel
+POSTGRES_URI = os.getenv("POSTGRES_URI", "")
 
 # =====================================================
 # API KEYS & ENDPOINTS (Loaded once from .env)
