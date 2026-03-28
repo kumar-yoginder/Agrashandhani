@@ -19,6 +19,14 @@ HA_KEY = os.getenv("HA_API_KEY", "")
 MB_API_KEY = os.getenv("MB_API_KEY", "")
 MALSHARE_API_KEY = os.getenv("MALSHARE_API_KEY", "")
 OTX_API_KEY = os.getenv("OTX_API_KEY", "")
+CYMRU_API_USERNAME = os.getenv("CYMRU_API_USERNAME", "")
+CYMRU_API_PASSWORD = os.getenv("CYMRU_API_PASSWORD", "")
+ANYRUN_API_KEY = os.getenv("ANYRUN_API_KEY", "")
+SECURITYTRAILS_API_KEY = os.getenv("SECURITYTRAILS_API_KEY", "")
+SHODAN_API_KEY = os.getenv("SHODAN_API_KEY", "")
+GREYNOISE_API_KEY = os.getenv("GREYNOISE_API_KEY", "")
+XFORCE_API_KEY = os.getenv("XFORCE_API_KEY", "")
+XFORCE_API_PASSWORD = os.getenv("XFORCE_API_PASSWORD", "")
 
 # API URLs
 MB_API_URL = "https://mb-api.abuse.ch/api/v1/"
@@ -26,6 +34,12 @@ VT_API_URL = "https://www.virustotal.com/api/v3"
 OTX_API_URL = "https://otx.alienvault.com/api/v1"
 MALSHARE_API_URL = "https://malshare.com/api.php"
 HA_API_URL = "https://www.hybrid-analysis.com/api/v2"
+CYMRU_API_URL = "https://hash.cymru.com/v2"
+ANYRUN_API_URL = "https://api.any.run/v1"
+SECURITYTRAILS_API_URL = "https://api.securitytrails.com/v1"
+SHODAN_API_URL = "https://api.shodan.io"
+GREYNOISE_API_URL = "https://api.greynoise.io/v3"
+XFORCE_API_URL = "https://api.xforce.ibmcloud.com"
 
 # =====================================================
 # IOC TYPES REFERENCE
