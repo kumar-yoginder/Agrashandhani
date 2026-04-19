@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 """
-Threat Intelligence Diagnostics Tool
+Threat Intelligence Diagnostics Tool.
 
-Analyzes threat_intel_db.json to identify:
-- Authentication/authorization failures (401, 403)
+Analyses ``data/threat_intel_db.json`` to identify:
+- Authentication/authorisation failures (401, 403)
 - Missing API credentials
 - Network/timeout issues
-- Data not found errors (expected)
-- Rate limiting issues
+- Data-not-found errors (expected)
+- Rate-limiting issues
 
 Provides recommendations for disabling sources with missing credentials.
+
+Author: Agrashandhani
+Version: 1.1
 """
 
 import json
+import logging
 import sys
-from typing import Dict, List, Tuple, Any
 from collections import defaultdict
 from datetime import datetime
+from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 
 # Error categories
@@ -36,15 +42,25 @@ EXPECTED_CODES = ["404", "429"]  # Normal/expected errors
 
 
 def load_threat_db(filename: str = "data/threat_intel_db.json") -> Dict[str, Any]:
-    """Load threat intelligence database"""
+    """Load threat intelligence database from a JSON file.
+
+    Args:
+        filename: Path to the JSON database file.
+
+    Returns:
+        Parsed database dict.
+
+    Raises:
+        SystemExit: On file-not-found or JSON parse errors (fatal for CLI use).
+    """
     try:
-        with open(filename, 'r') as f:
-            return json.load(f)
+        with open(filename, "r", encoding="utf-8") as fh:
+            return json.load(fh)
     except FileNotFoundError:
-        print(f"❌ File not found: {filename}")
+        logger.error("File not found: %s", filename)
         sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"❌ Invalid JSON: {e}")
+    except json.JSONDecodeError as exc:
+        logger.error("Invalid JSON in %s: %s", filename, exc)
         sys.exit(1)
 
 
@@ -367,7 +383,7 @@ def main():
     # Save analysis summary
     summary = {
         "timestamp": datetime.now().isoformat(),
-        "total_queries": threat_db.__len__(),
+        "total_queries": len(threat_db),
         "sources": {
             "total": len(sources_by_action["DISABLE"] + sources_by_action["INVESTIGATE"] + sources_by_action["MONITOR"] + sources_by_action["OK"]),
             "disable": sources_by_action["DISABLE"],

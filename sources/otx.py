@@ -3,12 +3,17 @@ AlienVault OTX (Open Threat Exchange) Source
 
 Queries the AlienVault OTX API for threat intelligence indicators.
 Reference: https://otx.alienvault.com/
+
+Author: Agrashandhani
+Version: 1.1
 """
 
+import logging
 from typing import Dict, Any
 from sources.base import Source
-from clients import RateLimitedClient
 from config import OTX_API_KEY, OTX_API_URL
+
+logger = logging.getLogger(__name__)
 
 
 class OTXSource(Source):
@@ -165,14 +170,13 @@ class OTXSource(Source):
                 "Content-Type": "application/json"
             }
             
-            otx_client = RateLimitedClient(max_retries=3)
+            otx_client = self.client
             
             # Query general section (base information)
             general_response = otx_client.request(
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/general",
                 headers=headers,
-                timeout=10
             )
             
             if general_response is None:
@@ -202,7 +206,6 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/malware",
                 headers=headers,
-                timeout=10
             )
             
             # Query analysis section (correlated indicators)
@@ -210,7 +213,6 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/analysis",
                 headers=headers,
-                timeout=10
             )
             
             # Query related section (related files)
@@ -218,7 +220,6 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/related",
                 headers=headers,
-                timeout=10
             )
             
             # Extract enriched information from sections
@@ -257,12 +258,11 @@ class OTXSource(Source):
                 "Content-Type": "application/json"
             }
             
-            otx_client = RateLimitedClient(max_retries=3)
+            otx_client = self.client
             response = otx_client.request(
                 "GET",
                 url,
                 headers=headers,
-                timeout=10
             )
             
             if response is None:
@@ -511,19 +511,8 @@ class OTXSource(Source):
     
     def _success_response(self, data: Any) -> Dict[str, Any]:
         """Create a success response in standard format."""
-        return {
-            "query_status": "ok",
-            "source": "otx",
-            "data": data
-        }
+        return super()._success_response(data)
     
     def _error_response(self, message: str, details: str = "") -> Dict[str, Any]:
         """Create an error response in standard format."""
-        return {
-            "query_status": "error",
-            "source": "otx",
-            "data": {
-                "error": message,
-                "details": details
-            }
-        }
+        return super()._error_response(message, details)

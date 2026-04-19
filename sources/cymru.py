@@ -1,192 +1,108 @@
 """
-Team Cymru Hash/IP Reputation Source
+Team Cymru Hash/IP Reputation Source.
 
 Queries the Team Cymru REST API for hash and IP reputation data.
 Reference: https://hash.cymru.com/docs_rest
-"""
 
-from typing import Dict, Any
+Author: Agrashandhani
+Version: 1.1
+"""
+import logging
+from typing import Any
+
 from sources.base import Source
-from clients import RateLimitedClient
-from config import CYMRU_API_URL, CYMRU_API_USERNAME, CYMRU_API_PASSWORD
+from config import CYMRU_API_PASSWORD, CYMRU_API_URL, CYMRU_API_USERNAME
+
+logger = logging.getLogger(__name__)
 
 
 class CymruSource(Source):
-    """
-    Team Cymru API source for hash and IP reputation lookups.
+    """Team Cymru API source for hash and IP reputation lookups.
 
     Supported IOC types:
-    - hash_md5: MD5 file hash
-    - hash_sha1: SHA1 file hash
-    - hash_sha256: SHA256 file hash
-    - ip_v4: IPv4 address
+    - ``hash_md5`` / ``hash_sha1`` / ``hash_sha256``: hash reputation
+    - ``ip_v4``: IP-to-ASN/BGP mapping
 
-    Features:
-    - Hash reputation (antivirus detection rate, last seen date)
-    - IP to ASN/BGP prefix mapping
-    - Authenticated REST API with HTTP Basic auth
+    Authentication uses HTTP Basic auth.
 
-    Reference:
-    - https://hash.cymru.com/docs_rest (API documentation)
-    - Register at: https://hash.cymru.com/
+    Attributes:
+        api_url: Team Cymru REST API base URL.
+        username: Cymru API username.
+        password: Cymru API password.
     """
 
-    def __init__(self):
-        """Initialize Cymru source with credentials from config."""
+    def __init__(self) -> None:
         super().__init__("cymru")
         self.api_url = CYMRU_API_URL
         self.username = CYMRU_API_USERNAME
         self.password = CYMRU_API_PASSWORD
 
-    def query(self, ioc_type: str, value: str) -> Dict[str, Any]:
-        """
-        Query Team Cymru API for threat intelligence.
+    def query(self, ioc_type: str, value: str) -> dict:
+        """Query Team Cymru for hash or IP reputation.
 
         Args:
-            ioc_type: Type of IOC (hash_md5, hash_sha1, hash_sha256, ip_v4)
-            value: The IOC value to look up
+            ioc_type: IOC classification (``hash_*`` or ``ip_v4``).
+            value: The IOC value to look up.
 
         Returns:
-            Normalized response dictionary with query_status, source, and data
+            Normalised response dict.
         """
         if not self.username or not self.password:
             return self._error_response(
                 "Cymru credentials not configured",
-                "Set CYMRU_API_USERNAME and CYMRU_API_PASSWORD environment variables. "
-                "Register at https://hash.cymru.com/"
+                "Set CYMRU_API_USERNAME and CYMRU_API_PASSWORD. "
+                "Register at https://hash.cymru.com/",
             )
 
         if ioc_type.startswith("hash_"):
-            return self._query_hash(value)
-        elif ioc_type == "ip_v4":
-            return self._query_ip(value)
-        else:
-            return self._error_response(
-                f"Unsupported IOC type: {ioc_type}",
-                "Cymru supports: hash_md5, hash_sha1, hash_sha256, ip_v4"
-            )
+            return self._query_endpoint(value)
+        if ioc_type == "ip_v4":
+            return self._query_endpoint(value)
 
-    def _query_hash(self, hash_value: str) -> Dict[str, Any]:
-        """
-        Query Cymru for hash reputation.
+        return self._error_response(
+            f"Unsupported IOC type: {ioc_type}",
+            "Cymru supports: hash_md5, hash_sha1, hash_sha256, ip_v4",
+        )
 
-        Endpoint: GET /v2/query/{hash}
+    def _query_endpoint(self, indicator: str) -> dict:
+        """Query a Cymru endpoint for the given indicator (hash or IP).
+
+        Endpoint: ``GET /v2/query/{indicator}``
 
         Args:
-            hash_value: The hash to look up (MD5, SHA1, or SHA256)
+            indicator: Hash or IPv4 address to look up.
 
         Returns:
-            Normalized response with hash reputation data
+            Normalised response dict.
         """
         try:
-            url = f"{self.api_url}/query/{hash_value}"
+            url = f"{self.api_url}/query/{indicator}"
             headers = {
                 "User-Agent": "Agrashandhani/1.0 (OSINT Tool)",
-                "Accept": "application/json"
+                "Accept": "application/json",
             }
 
-            cymru_client = RateLimitedClient(max_retries=3)
-            response = cymru_client.request(
+            response = self.client.request(
                 "GET",
                 url,
                 headers=headers,
                 auth=(self.username, self.password),
-                timeout=15
             )
 
-            if response is None:
+            if not isinstance(response, dict):
                 return self._error_response(
-                    "API request failed",
-                    "Connection error or timeout querying Cymru"
+                    "Unexpected response format",
+                    "Cymru returned a non-JSON response",
                 )
 
-            if isinstance(response, dict):
-                if "error" in response:
-                    return self._error_response(
-                        f"Cymru API error: {response['error']}",
-                        str(response.get("message", ""))
-                    )
-                return self._success_response(response)
-
-            return self._error_response(
-                "Unexpected response format",
-                "Cymru returned non-JSON response"
-            )
-
-        except Exception as e:
-            return self._error_response(
-                f"Query failed: {str(e)}",
-                "Error querying Cymru API"
-            )
-
-    def _query_ip(self, ip_address: str) -> Dict[str, Any]:
-        """
-        Query Cymru for IP to ASN/BGP mapping.
-
-        Endpoint: GET /v2/query/{ip}
-
-        Args:
-            ip_address: IPv4 address to look up
-
-        Returns:
-            Normalized response with ASN/BGP data
-        """
-        try:
-            url = f"{self.api_url}/query/{ip_address}"
-            headers = {
-                "User-Agent": "Agrashandhani/1.0 (OSINT Tool)",
-                "Accept": "application/json"
-            }
-
-            cymru_client = RateLimitedClient(max_retries=3)
-            response = cymru_client.request(
-                "GET",
-                url,
-                headers=headers,
-                auth=(self.username, self.password),
-                timeout=15
-            )
-
-            if response is None:
+            if "error" in response:
                 return self._error_response(
-                    "API request failed",
-                    "Connection error or timeout querying Cymru"
+                    f"Cymru API error: {response['error']}",
+                    str(response.get("message", "")),
                 )
 
-            if isinstance(response, dict):
-                if "error" in response:
-                    return self._error_response(
-                        f"Cymru API error: {response['error']}",
-                        str(response.get("message", ""))
-                    )
-                return self._success_response(response)
+            return self._success_response(response)
 
-            return self._error_response(
-                "Unexpected response format",
-                "Cymru returned non-JSON response"
-            )
-
-        except Exception as e:
-            return self._error_response(
-                f"Query failed: {str(e)}",
-                "Error querying Cymru API"
-            )
-
-    def _success_response(self, data: Any) -> Dict[str, Any]:
-        """Create a success response in standard format."""
-        return {
-            "query_status": "ok",
-            "source": "cymru",
-            "data": data
-        }
-
-    def _error_response(self, message: str, details: str = "") -> Dict[str, Any]:
-        """Create an error response in standard format."""
-        return {
-            "query_status": "error",
-            "source": "cymru",
-            "data": {
-                "error": message,
-                "details": details
-            }
-        }
+        except Exception as exc:
+            logger.exception("[cymru] Unexpected error querying %s", indicator)
+            return self._error_response(f"Unexpected error: {exc}")
