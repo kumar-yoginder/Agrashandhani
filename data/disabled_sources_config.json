@@ -1,0 +1,88 @@
+{
+  "disabled_sources": [
+    "securitytrails",
+    "shodan",
+    "virustotal",
+    "xforce_ibm"
+  ],
+  "reason": "Missing or invalid API credentials (401/403 errors)",
+  "created_at": "2026-04-19T18:28:48.125065",
+  "error_codes": {
+    "401": "Unauthorized - Missing or invalid API key",
+    "403": "Forbidden - Invalid credentials or insufficient permissions"
+  },
+  "source_details": {
+    "virustotal": {
+      "error_code": "401",
+      "error_message": "401 Client Error: Unauthorized",
+      "reason": "Missing VT_API_KEY in .env",
+      "occurrences": 11,
+      "required_env_variable": "VT_API_KEY",
+      "signup_url": "https://www.virustotal.com/",
+      "api_docs": "https://www.virustotal.com/api/v3/",
+      "how_to_fix": [
+        "1. Sign up at https://www.virustotal.com/",
+        "2. Go to Settings > API",
+        "3. Copy your API key",
+        "4. Add to .env: VT_API_KEY=<your_key>"
+      ]
+    },
+    "securitytrails": {
+      "error_code": "401",
+      "error_message": "401 Client Error: Unauthorized",
+      "reason": "Missing SECURITYTRAILS_API_KEY in .env",
+      "occurrences": 11,
+      "required_env_variable": "SECURITYTRAILS_API_KEY",
+      "signup_url": "https://securitytrails.com/",
+      "api_docs": "https://docs.securitytrails.com/",
+      "how_to_fix": [
+        "1. Sign up at https://securitytrails.com/",
+        "2. Go to Settings > API",
+        "3. Copy your API key",
+        "4. Add to .env: SECURITYTRAILS_API_KEY=<your_key>"
+      ]
+    },
+    "shodan": {
+      "error_code": "403",
+      "error_message": "403 Client Error: Forbidden",
+      "reason": "Invalid or expired SHODAN_API_KEY",
+      "occurrences": 11,
+      "required_env_variable": "SHODAN_API_KEY",
+      "signup_url": "https://www.shodan.io/",
+      "api_docs": "https://developer.shodan.io/api",
+      "how_to_fix": [
+        "1. Sign up at https://www.shodan.io/",
+        "2. Go to Account > Settings > API",
+        "3. Copy your API key",
+        "4. Add to .env: SHODAN_API_KEY=<your_key>"
+      ]
+    },
+    "xforce_ibm": {
+      "error_code": "401",
+      "error_message": "401 Client Error: Unauthorized",
+      "reason": "Missing or invalid XFORCE credentials",
+      "occurrences": 11,
+      "required_env_variables": ["XFORCE_API_KEY", "XFORCE_API_PASSWORD"],
+      "signup_url": "https://exchange.xforce.ibmcloud.com/",
+      "api_docs": "https://api.xforce.ibmcloud.com/doc/",
+      "how_to_fix": [
+        "1. Sign up at https://exchange.xforce.ibmcloud.com/",
+        "2. Go to Settings > API",
+        "3. Copy your API key and password",
+        "4. Add to .env: XFORCE_API_KEY=<key>",
+        "5. Add to .env: XFORCE_API_PASSWORD=<password>"
+      ]
+    }
+  },
+  "action_items": [
+    "Option 1: Add valid API credentials to .env and remove from disabled list",
+    "Option 2: Keep sources disabled if not needed for threat intelligence",
+    "Option 3: Update sources/__init__.py to skip disabled sources during initialization"
+  ],
+  "notes": [
+    "Sources with 401/403 errors cannot query APIs without valid credentials",
+    "These sources are disabled to prevent repeated failed API calls",
+    "Update .env and re-run threat_intel_diagnostics.py to verify fixes",
+    "Disabled sources will not be loaded in sources/__init__.py SOURCES registry"
+  ]
+}

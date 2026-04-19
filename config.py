@@ -9,7 +9,7 @@ load_dotenv()
 # =====================================================
 # DATABASE
 # =====================================================
-DB_FILE = os.getenv("DB_FILE", "threat_intel_db.json")
+DB_FILE = os.getenv("DB_FILE", "data/threat_intel_db.json")
 
 # Set MONGODB_URI to use MongoDB instead of the local JSON file.
 # Example: mongodb://user:pass@localhost:27017/threatintel

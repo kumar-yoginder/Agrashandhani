@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-04-19T18:28:48.125370",
+  "total_queries": 11,
+  "sources": {
+    "total": 9,
+    "disable": [
+      "securitytrails",
+      "shodan",
+      "virustotal",
+      "xforce_ibm"
+    ],
+    "investigate": [
+      "otx"
+    ],
+    "monitor": [
+      "anyrun",
+      "cymru",
+      "hybrid_analysis"
+    ],
+    "ok": [
+      "greynoise"
+    ]
+  }
+}

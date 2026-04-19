@@ -154,7 +154,9 @@ Agrashandhani/
 ├── requirements.txt             # Python dependencies
 ├── .env                         # API keys (not in repo)
 ├── .env.example                 # Configuration template
-├── threat_intel_db.json         # Local cache with timestamps
+├── data/
+│   ├── threat_intel_db.json     # Local cache with timestamps
+│   └── malware_families_mapping.json
 ├── sample_iocs.csv              # Example batch file
 │
 ├── config.py                    # Configuration & constants
@@ -233,7 +235,7 @@ All keys are optional — if a key is missing, that source is skipped with a des
 
 ## Usage Notes
 
-- **Local Cache**: All results stored in `threat_intel_db.json` with ISO timestamps. Use `-r/--refresh` to bypass cache
+- **Local Cache**: All results stored in `data/threat_intel_db.json` with ISO timestamps. Use `-r/--refresh` to bypass cache
 - **Dependencies**: Minimal footprint - only `requests` and `python-dotenv` in production
 - **Extensibility**: Add new sources without modifying existing code - just extend `Source` class
 - **Integration**: Import and use: `from engine import run_osint_search`
