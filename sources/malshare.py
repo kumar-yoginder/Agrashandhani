@@ -103,7 +103,7 @@ class MalShareSource(Source):
 
         except Exception as exc:
             logger.exception("[malshare] Unexpected error querying %s", hash_value)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _normalize_details(self, data: dict) -> dict:
         """Normalise a MalShare details response.

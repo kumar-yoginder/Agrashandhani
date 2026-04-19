@@ -110,4 +110,4 @@ class AnyRunSource(Source):
 
         except Exception as exc:
             logger.exception("[anyrun] Unexpected error querying %s", value)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)

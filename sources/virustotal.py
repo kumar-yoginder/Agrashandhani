@@ -76,7 +76,7 @@ class VirusTotalSource(Source):
 
         except Exception as exc:
             logger.exception("[virustotal] Unexpected error querying %s", value)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _normalize_response(self, response: dict) -> dict:
         """Normalise a VirusTotal API response.

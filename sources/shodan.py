@@ -101,7 +101,7 @@ class ShodanSource(Source):
 
         except Exception as exc:
             logger.exception("[shodan] Unexpected error querying host %s", ip_address)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _query_domain(self, domain: str) -> dict:
         """Fetch domain DNS information from Shodan.
@@ -135,7 +135,7 @@ class ShodanSource(Source):
 
         except Exception as exc:
             logger.exception("[shodan] Unexpected error querying domain %s", domain)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _normalize_host(self, data: dict) -> dict:
         """Extract key threat indicators from a Shodan host response.

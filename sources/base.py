@@ -96,18 +96,23 @@ class Source(ABC):
             "message": message,
         }
 
-    def _error_response(self, message: str, details: str = "") -> dict:
+    def _error_response(self, message: str, details: str = "", *, log: bool = True) -> dict:
         """Build a standardised error response.
 
         Args:
             message: Short description of the error.
             details: Optional longer explanation or remediation hint.
+            log: When ``True`` (default) emit a ``logger.error`` entry.
+                Pass ``log=False`` when the caller has already logged the
+                exception (e.g. via ``logger.exception()``) to avoid
+                duplicate log lines.
 
         Returns:
             Dict with ``query_status="error"``, ``source``, and ``data``
             keys containing the error and details.
         """
-        logger.error("[%s] %s — %s", self.name, message, details)
+        if log:
+            logger.error("[%s] %s — %s", self.name, message, details)
         return {
             "query_status": "error",
             "source": self.name,

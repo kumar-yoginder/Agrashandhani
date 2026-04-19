@@ -110,7 +110,7 @@ class XForceIBMSource(Source):
             return self._handle_response(response)
         except Exception as exc:
             logger.exception("[xforce_ibm] Unexpected error querying hash %s", hash_value)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _query_ip(self, ip_address: str) -> dict:
         """Fetch IP reputation data from X-Force.
@@ -132,7 +132,7 @@ class XForceIBMSource(Source):
             return self._handle_response(response)
         except Exception as exc:
             logger.exception("[xforce_ibm] Unexpected error querying IP %s", ip_address)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _query_domain(self, domain: str) -> dict:
         """Fetch domain intelligence from X-Force.
@@ -154,7 +154,7 @@ class XForceIBMSource(Source):
             return self._handle_response(response)
         except Exception as exc:
             logger.exception("[xforce_ibm] Unexpected error querying domain %s", domain)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _query_url(self, url_value: str) -> dict:
         """Fetch URL threat analysis from X-Force.
@@ -176,7 +176,7 @@ class XForceIBMSource(Source):
             return self._handle_response(response)
         except Exception as exc:
             logger.exception("[xforce_ibm] Unexpected error querying URL %s", url_value)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _handle_response(self, response: Any) -> dict:
         """Normalise an X-Force API response.

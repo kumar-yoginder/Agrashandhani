@@ -26,6 +26,21 @@ def _ensure_output_dir() -> None:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
+def _sanitize_filename(query: str) -> str:
+    """Convert an IOC string into a filesystem-safe filename component.
+
+    Replaces any character that is not alphanumeric, a hyphen, underscore, or
+    period with an underscore so the result can be safely embedded in a path.
+
+    Args:
+        query: Raw IOC string.
+
+    Returns:
+        Sanitised string suitable for use in filenames.
+    """
+    return "".join(c if c.isalnum() or c in "-_." else "_" for c in query)
+
+
 def _write_output(results: dict) -> str:
     """Persist a query result to a timestamped JSON file.
 
@@ -37,8 +52,7 @@ def _write_output(results: dict) -> str:
     """
     _ensure_output_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Sanitise the query string so it can be part of a filename.
-    safe_query = "".join(c if c.isalnum() or c in "-_." else "_" for c in results.get("query", "unknown"))
+    safe_query = _sanitize_filename(results.get("query", "unknown"))
     filename = os.path.join(OUTPUT_DIR, f"result_{safe_query}_{timestamp}.json")
     try:
         with open(filename, "w", encoding="utf-8") as fh:

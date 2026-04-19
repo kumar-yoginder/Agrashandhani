@@ -95,7 +95,7 @@ class GreyNoiseSource(Source):
 
         except Exception as exc:
             logger.exception("[greynoise] Unexpected error querying %s", ip_address)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _normalize_response(self, data: dict) -> dict:
         """Extract the key fields from a GreyNoise community response.

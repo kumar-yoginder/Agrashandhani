@@ -105,4 +105,4 @@ class CymruSource(Source):
 
         except Exception as exc:
             logger.exception("[cymru] Unexpected error querying %s", indicator)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)

@@ -77,7 +77,7 @@ class HybridAnalysisSource(Source):
 
         except Exception as exc:
             logger.exception("[hybrid_analysis] Unexpected error querying %s", value)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _query_hash(self, hash_value: str, headers: dict) -> dict:
         """Look up a file hash in the Hybrid Analysis database.

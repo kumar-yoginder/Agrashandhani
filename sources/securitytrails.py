@@ -98,7 +98,7 @@ class SecurityTrailsSource(Source):
 
         except Exception as exc:
             logger.exception("[securitytrails] Unexpected error querying domain %s", domain)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _query_ip(self, ip_address: str) -> dict:
         """Fetch hostname associations for an IP from SecurityTrails.
@@ -131,4 +131,4 @@ class SecurityTrailsSource(Source):
 
         except Exception as exc:
             logger.exception("[securitytrails] Unexpected error querying IP %s", ip_address)
-            return self._error_response(f"Unexpected error: {exc}")
+            return self._error_response(f"Unexpected error: {exc}", log=False)
