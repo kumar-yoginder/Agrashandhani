@@ -1,16 +1,23 @@
 """
-Threat Intelligence Database Manager
+Threat Intelligence Database Manager.
 
 Supports three backends selected by environment variables:
-  1. MongoDB  – set MONGODB_URI (e.g. mongodb://localhost:27017/threatintel)
-  2. PostgreSQL – set POSTGRES_URI (e.g. postgresql://user:pass@host/db)
+  1. MongoDB  – set MONGODB_URI (e.g. ``mongodb://localhost:27017/threatintel``)
+  2. PostgreSQL – set POSTGRES_URI (e.g. ``postgresql://user:pass@host/db``)
   3. JSON file  – fallback when neither URI is set (original behaviour)
+
+Author: Agrashandhani
+Version: 1.1
 """
-import os
 import json
+import logging
+import os
 import atexit
 from abc import ABC, abstractmethod
+
 from config import DB_FILE, MONGODB_URI, POSTGRES_URI
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -53,17 +60,18 @@ class JsonDB(BaseDB):
             try:
                 with open(self.db_file, "r") as fh:
                     return json.load(fh)
-            except Exception as exc:
-                print(f"[DB-JSON] Error loading DB: {exc}")
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.error("[DB-JSON] Error loading DB from %s: %s", self.db_file, exc)
         return {}
 
     def save_db(self):
         """Flush in-memory cache to disk."""
         try:
+            os.makedirs(os.path.dirname(self.db_file) or ".", exist_ok=True)
             with open(self.db_file, "w") as fh:
                 json.dump(self._db, fh, indent=2)
-        except Exception as exc:
-            print(f"[DB-JSON] Error saving DB: {exc}")
+        except OSError as exc:
+            logger.error("[DB-JSON] Error saving DB to %s: %s", self.db_file, exc)
 
     def get(self, query: str) -> dict:
         return self._db.get(query)
@@ -120,12 +128,11 @@ class MongoDBDB(BaseDB):
         # Create a unique index on _id (it already exists by default in MongoDB,
         # so this is a no-op but makes intent explicit).
         self._col.create_index("_id", unique=True)
-        print(f"[DB-MongoDB] Connected – db={db_name}, collection={self.COLLECTION}")
+        logger.info("[DB-MongoDB] Connected – db=%s, collection=%s", db_name, self.COLLECTION)
 
     @staticmethod
     def _resolve_db_name(uri: str) -> bool:
         """Return True if the URI contains a non-empty database path component."""
-        # Quick heuristic: strip scheme, credentials, host; check for a '/dbname' part.
         try:
             from urllib.parse import urlparse
             parsed = urlparse(uri)
@@ -162,7 +169,8 @@ class PostgresDB(BaseDB):
 
     Connection string format:  postgresql://user:pass@host[:port]/dbname
 
-    Table schema (auto-created on first use):
+    Table schema (auto-created on first use)::
+
         CREATE TABLE IF NOT EXISTS threat_intel (
             query     TEXT PRIMARY KEY,
             data      JSONB NOT NULL,
@@ -193,7 +201,7 @@ class PostgresDB(BaseDB):
         self._extras = psycopg2.extras
         self._sql = pgsql
         self._init_schema()
-        print(f"[DB-Postgres] Connected – table={self.TABLE}")
+        logger.info("[DB-Postgres] Connected – table=%s", self.TABLE)
 
     def _init_schema(self):
         """Create the table and index if they do not already exist."""
@@ -263,8 +271,7 @@ class PostgresDB(BaseDB):
 # ---------------------------------------------------------------------------
 
 class ThreatIntelDB:
-    """
-    Public façade kept for backwards compatibility.
+    """Public façade kept for backwards compatibility.
 
     Delegates all operations to the appropriate backend chosen by
     :func:`_get_db_backend`.  Existing call-sites are unaffected.
@@ -291,8 +298,7 @@ class ThreatIntelDB:
         self._backend.set(query, data)
 
     def save_db(self):
-        """
-        Flush any in-memory state to persistent storage.
+        """Flush any in-memory state to persistent storage.
 
         For JSON backend this writes the file; for MongoDB/PostgreSQL it
         is a no-op because every :meth:`set` call is already durable.
@@ -306,27 +312,29 @@ class ThreatIntelDB:
 # ---------------------------------------------------------------------------
 
 def _get_db_backend() -> BaseDB:
-    """
-    Select and initialise the appropriate database backend.
+    """Select and initialise the appropriate database backend.
 
     Priority:
       1. MongoDB  if MONGODB_URI is set and non-empty
       2. PostgreSQL if POSTGRES_URI is set and non-empty
       3. JSON file  (original behaviour, always available)
+
+    Returns:
+        Initialised :class:`BaseDB` instance.
     """
     if MONGODB_URI:
         try:
             backend = MongoDBDB(MONGODB_URI)
             return backend
         except Exception as exc:
-            print(f"[DB] MongoDB init failed, falling back to JSON: {exc}")
+            logger.warning("[DB] MongoDB init failed, falling back to JSON: %s", exc)
 
     if POSTGRES_URI:
         try:
             backend = PostgresDB(POSTGRES_URI)
             return backend
         except Exception as exc:
-            print(f"[DB] PostgreSQL init failed, falling back to JSON: {exc}")
+            logger.warning("[DB] PostgreSQL init failed, falling back to JSON: %s", exc)
 
     return JsonDB(DB_FILE)
 
