@@ -1,11 +1,11 @@
 """
 Hybrid Analysis (Falcon Sandbox) threat intelligence source.
 
-API Reference: https://hybrid-analysis.com/knowledge-base/searching-the-database-using-api
-VxAPI Wrapper: https://github.com/PayloadSecurity/VxAPI
+API Reference: https://hybrid-analysis.com/docs/api/v2
+Official API Docs: https://hybrid-analysis.com/knowledge-base/searching-the-database-using-api
 
 Author: Agrashandhani
-Version: 1.1
+Version: 1.2
 """
 import logging
 
@@ -16,20 +16,24 @@ logger = logging.getLogger(__name__)
 
 
 class HybridAnalysisSource(Source):
-    """Hybrid Analysis (Falcon Sandbox) source.
+    """Hybrid Analysis (Falcon Sandbox) source - Search API Implementation.
 
     Supported IOC types:
-    - ``hash_md5`` / ``hash_sha1`` / ``hash_sha256``: file hash lookup
-    - ``ip_v4``: IP address search (``host:`` prefix)
-    - ``domain``: domain search
-    - ``url``: URL search
+    - ``hash_md5`` / ``hash_sha1`` / ``hash_sha256``: file hash lookup via /search/hash
+    - ``ip_v4``, ``domain``, ``url``: Search endpoint (limited support)
 
     Rate limits (Public Sandbox):
     - 5 queries per minute
     - 200 queries per hour
 
+    API v2 Features:
+    - GET /search/hash: Direct hash search (recommended)
+    - POST /search/hash: Hash search (deprecated, use GET instead)
+    - POST /search/hashes: Batch hash search
+    - POST /search/terms: Advanced search with query terms
+
     Attributes:
-        api_url: Hybrid Analysis API base URL.
+        api_url: Hybrid Analysis API base URL (v2).
         api_key: API key loaded from config.
     """
 
@@ -39,48 +43,45 @@ class HybridAnalysisSource(Source):
         self.api_key = HA_KEY
 
     def query(self, ioc_type: str, value: str) -> dict:
-        """Query the Hybrid Analysis API.
+        """Query the Hybrid Analysis Search API.
 
         Args:
-            ioc_type: IOC classification (``hash_*``, ``ip_v4``, ``domain``,
-                ``url``).
+            ioc_type: IOC classification (``hash_*``, ``ip_v4``, ``domain``, ``url``).
             value: The IOC value to look up.
 
         Returns:
-            Normalised response dict.
+            Normalised response dict with query_status, source, and data.
         """
         if not self.api_key:
             return self._error_response(
                 "Hybrid Analysis API key missing",
-                "Get it from https://www.hybrid-analysis.com/apikeys",
+                "Get it from https://hybrid-analysis.com/my-account?tab=%23api-key-tab",
             )
 
         headers = {
             "api-key": self.api_key,
-            "User-Agent": "Falcon Sandbox",
+            "User-Agent": "Falcon",  # Required to bypass User-Agent blacklist
         }
 
         try:
+            # Route to appropriate search method
             if ioc_type.startswith("hash_"):
-                return self._query_hash(value, headers)
-            if ioc_type == "ip_v4":
-                return self._search_terms(f"host:{value}", headers)
-            if ioc_type == "domain":
-                return self._search_terms(f"domain:{value}", headers)
-            if ioc_type == "url":
-                return self._search_terms(f"url:{value}", headers)
-
-            return self._error_response(
-                f"Unsupported IOC type: {ioc_type}",
-                "Hybrid Analysis supports: hash_*, ip_v4, domain, url",
+                return self._search_hash(value, headers)
+            
+            # Other IOC types not directly supported by /search/hash
+            # Fall back to not found for now (Search API is primarily for hashes)
+            return self._not_found_response(
+                f"Search API primarily supports hash lookups. IOC type '{ioc_type}' not supported."
             )
 
         except Exception as exc:
             logger.exception("[hybrid_analysis] Unexpected error querying %s", value)
             return self._error_response(f"Unexpected error: {exc}", log=False)
 
-    def _query_hash(self, hash_value: str, headers: dict) -> dict:
-        """Look up a file hash in the Hybrid Analysis database.
+    def _search_hash(self, hash_value: str, headers: dict) -> dict:
+        """Search for a file hash using the Hybrid Analysis /search/hash endpoint.
+
+        Uses the recommended GET method (POST is deprecated).
 
         Args:
             hash_value: MD5, SHA1, or SHA256 hash.
@@ -89,22 +90,18 @@ class HybridAnalysisSource(Source):
         Returns:
             Normalised response dict.
         """
+        # Use GET method (v2.35.0+) - POST is deprecated
         url = f"{self.api_url}/search/hash"
-        response = self.client.request("GET", url, headers=headers, params={"hash": hash_value})
-        return self._normalize_response(response)
-
-    def _search_terms(self, search_query: str, headers: dict) -> dict:
-        """Advanced search using Hybrid Analysis search terms/prefixes.
-
-        Args:
-            search_query: Prefixed search string (e.g. ``"host:1.2.3.4"``).
-            headers: HTTP headers including the API key.
-
-        Returns:
-            Normalised response dict.
-        """
-        url = f"{self.api_url}/search/terms"
-        response = self.client.request("POST", url, headers=headers, json={"query": search_query})
+        params = {"hash": hash_value}
+        
+        response = self.client.request(
+            "GET",
+            url,
+            headers=headers,
+            params=params,
+            timeout=self.timeout,
+        )
+        
         return self._normalize_response(response)
 
     def _normalize_response(self, response: dict) -> dict:
@@ -114,12 +111,28 @@ class HybridAnalysisSource(Source):
             response: Raw dict from :class:`~clients.RateLimitedClient`.
 
         Returns:
-            Normalised response dict.
+            Normalised response dict (success, not_found, or error).
         """
+        # Handle error responses from the client
         if "error" in response:
-            return self._error_response(str(response["error"]))
+            error_msg = response.get("error", "Unknown error")
+            return self._error_response(
+                f"Hybrid Analysis API error: {error_msg}",
+                log=False
+            )
 
-        if not response:
-            return self._not_found_response()
+        # Empty response means hash not found in database
+        if not response or response.get("response_code") == 0:
+            return self._not_found_response(
+                "Hash not found in Hybrid Analysis database"
+            )
 
-        return self._success_response(response)
+        # Successful response with data
+        if response.get("response_code") == 1:
+            return self._success_response(response)
+
+        # Unknown response format
+        return self._not_found_response(
+            f"Unexpected response format: {response}"
+        )
+

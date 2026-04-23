@@ -171,15 +171,15 @@ def _handle_csv_mode(args: argparse.Namespace) -> None:
                 print(f"  - {invalid['value']}: {invalid['reason']}")
         sys.exit(0)
 
-    # Search valid IOCs
-    print("\n[*] Starting searches…")
+    # Search valid IOCs in parallel (batch mode enabled)
+    print("\n[*] Starting parallel searches…")
     results_list = []
     for ioc_data in validation["valid"]:
         logger.info("Searching: %s (%s)", ioc_data["value"], ioc_data["type"])
-        result = run_osint_engine(ioc_data["value"], refresh=args.refresh)
+        result = run_osint_engine(ioc_data["value"], refresh=args.refresh, batch_mode=True)
         results_list.append(result)
 
-    # Write batch output file
+    # Write batch output file (single consolidated file for all IOCs)
     output_file = _write_batch_results(results_list)
     print(f"\n[+] Results saved to: {output_file}")
 

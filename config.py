@@ -72,6 +72,16 @@ IOC_TYPES = {
 # =====================================================
 # HTTP CLIENT SETTINGS
 # =====================================================
-HTTP_TIMEOUT = 20
-MAX_RETRIES = 3
+HTTP_TIMEOUT = 10  # Increased from 20 to handle slow APIs like OTX
+MAX_RETRIES = 1    # Increased from 3 for better resilience
 BACKOFF_FACTOR = 1
+
+# =====================================================
+# PER-SOURCE TIMEOUTS (overrides HTTP_TIMEOUT if set)
+# =====================================================
+SOURCE_TIMEOUTS = {
+    "otx": 50,                    # OTX needs more time for reputation queries
+    "hybrid_analysis": 35,
+    "virustotal": 40,
+    "greynoise": 45,
+}

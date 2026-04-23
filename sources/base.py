@@ -6,9 +6,10 @@ Version: 1.1
 """
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 from clients import RateLimitedClient
+from config import SOURCE_TIMEOUTS, HTTP_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class Source(ABC):
         name: Human-readable source identifier (e.g. ``"virustotal"``).
         client: Shared :class:`~clients.RateLimitedClient` instance used for
             all HTTP calls made by this source.
+        timeout: HTTP timeout for this specific source (in seconds).
 
     Example::
 
@@ -32,18 +34,22 @@ class Source(ABC):
                 super().__init__("mysource")
 
             def query(self, ioc_type, value):
-                response = self.client.request("GET", "https://...")
+                response = self.client.request("GET", "https://...", timeout=self.timeout)
                 return self._success_response(response)
     """
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, timeout: Optional[int] = None) -> None:
         """Initialise the source with a name and a shared HTTP client.
 
         Args:
             name: Unique identifier for this source (lower-snake-case).
+            timeout: Optional custom timeout for this source. If not provided,
+                will use SOURCE_TIMEOUTS config or HTTP_TIMEOUT.
         """
         self.name = name
         self.client = RateLimitedClient()
+        # Use per-source timeout if configured, otherwise use default
+        self.timeout = timeout or SOURCE_TIMEOUTS.get(name, HTTP_TIMEOUT)
 
     @abstractmethod
     def query(self, ioc_type: str, value: str) -> dict:

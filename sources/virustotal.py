@@ -71,7 +71,12 @@ class VirusTotalSource(Source):
                     "VirusTotal supports: hash_*, ip_v4, ip_v6, domain, url",
                 )
 
-            response = self.client.request("GET", endpoint, headers=headers)
+            response = self.client.request(
+                "GET",
+                endpoint,
+                headers=headers,
+                timeout=self.timeout,
+            )
             return self._normalize_response(response)
 
         except Exception as exc:

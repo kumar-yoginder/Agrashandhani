@@ -77,7 +77,12 @@ class GreyNoiseSource(Source):
                 "Accept": "application/json",
             }
 
-            response = self.client.request("GET", url, headers=headers)
+            response = self.client.request(
+                "GET",
+                url,
+                headers=headers,
+                timeout=self.timeout,
+            )
 
             if not isinstance(response, dict):
                 return self._error_response("Unexpected response format")

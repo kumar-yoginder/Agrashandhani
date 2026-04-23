@@ -177,6 +177,7 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/general",
                 headers=headers,
+                timeout=self.timeout,
             )
             
             if general_response is None:
@@ -206,6 +207,7 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/malware",
                 headers=headers,
+                timeout=self.timeout,
             )
             
             # Query analysis section (correlated indicators)
@@ -213,6 +215,7 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/analysis",
                 headers=headers,
+                timeout=self.timeout,
             )
             
             # Query related section (related files)
@@ -220,6 +223,7 @@ class OTXSource(Source):
                 "GET",
                 f"{self.api_url}/indicators/{endpoint_type}/{hash_value}/related",
                 headers=headers,
+                timeout=self.timeout,
             )
             
             # Extract enriched information from sections
@@ -263,6 +267,7 @@ class OTXSource(Source):
                 "GET",
                 url,
                 headers=headers,
+                timeout=self.timeout,
             )
             
             if response is None:

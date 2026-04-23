@@ -3,14 +3,17 @@ OSINT Search Engine.
 
 Orchestrates IOC lookups across all configured threat intelligence sources,
 manages the local result cache, and persists output to timestamped JSON files.
+Implements parallel source scanning to reduce query time.
 
 Author: Agrashandhani
-Version: 1.1
+Version: 1.2
 """
 import json
 import logging
 import os
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Any, Callable, Tuple
 
 from validators import IOCValidator
 from sources import SOURCES, get_available_sources
@@ -19,6 +22,7 @@ from database import db_manager
 logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = "outputs"
+MAX_WORKERS = 6  # Number of parallel source queries
 
 
 def _ensure_output_dir() -> None:
@@ -41,15 +45,20 @@ def _sanitize_filename(query: str) -> str:
     return "".join(c if c.isalnum() or c in "-_." else "_" for c in query)
 
 
-def _write_output(results: dict) -> str:
+def _write_output(results: dict, write_individual_files: bool = False) -> str:
     """Persist a query result to a timestamped JSON file.
 
     Args:
         results: Structured result dict produced by :func:`run_osint_engine`.
+        write_individual_files: If False, returns empty string (for batch mode).
+            Individual files are not written when processing bulk IOCs.
 
     Returns:
-        Absolute path of the written output file.
+        Absolute path of the written output file, or empty string if not writing.
     """
+    if not write_individual_files:
+        return ""
+    
     _ensure_output_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     safe_query = _sanitize_filename(results.get("query", "unknown"))
@@ -90,12 +99,54 @@ def _is_present(source_result: dict) -> bool:
     return query_status == "ok"
 
 
-def run_osint_engine(query: str, sources: list = None, refresh: bool = False) -> dict:
-    """Search for an IOC across configured threat intelligence sources.
+def _query_single_source(
+    source_name: str, source: Any, ioc_type: str, value: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Query a single source for an IOC (worker function for ThreadPoolExecutor).
+    
+    Args:
+        source_name: Name of the source.
+        source: Source instance.
+        ioc_type: IOC type classification.
+        value: IOC value to query.
+    
+    Returns:
+        Tuple of (source_name, result_dict).
+    """
+    try:
+        source_result = source.query(ioc_type, value)
+        logger.debug("Source %s returned status=%s", source_name, source_result.get("query_status"))
+        
+        result = {
+            "present": _is_present(source_result),
+            "data": source_result,
+            "queried_at": datetime.now().isoformat(),
+        }
+        return source_name, result
+    except Exception as exc:
+        logger.exception("Error querying source %s: %s", source_name, exc)
+        return source_name, {
+            "present": False,
+            "data": {
+                "query_status": "error",
+                "source": source_name,
+                "data": {"error": str(exc)},
+            },
+            "queried_at": datetime.now().isoformat(),
+        }
+
+
+def run_osint_engine(
+    query: str, 
+    sources: list = None, 
+    refresh: bool = False,
+    batch_mode: bool = False,
+) -> dict:
+    """Search for an IOC across configured threat intelligence sources in parallel.
 
     Checks the local cache first (unless *refresh* is ``True``), then queries
-    each relevant source, persists the result to the cache and to a JSON output
-    file, and returns the structured result.
+    each relevant source in parallel, persists the result to the cache and 
+    optionally to a JSON output file, and returns the structured result.
 
     Args:
         query: Raw IOC string to look up (hash, IP, domain, URL, CVE, etc.).
@@ -103,6 +154,8 @@ def run_osint_engine(query: str, sources: list = None, refresh: bool = False) ->
             Defaults to all sources that support the detected IOC type.
         refresh: When ``True``, bypass the local cache and force fresh API
             queries.
+        batch_mode: When ``True``, prevents writing individual output files
+            (results are only written to the batch output file in main.py).
 
     Returns:
         Dict with keys:
@@ -110,7 +163,7 @@ def run_osint_engine(query: str, sources: list = None, refresh: bool = False) ->
         - ``ioc_type`` (str): Detected IOC type.
         - ``timestamp`` (str): ISO-8601 timestamp of the search.
         - ``sources`` (dict): Per-source result dicts.
-        - ``output_file`` (str, optional): Path to the written JSON file.
+        - ``output_file`` (str, optional): Path to the written JSON file (only if not batch_mode).
         - ``error`` (str, optional): Present only when the IOC type is unknown.
     """
     ioc = IOCValidator.classify(query)
@@ -144,27 +197,36 @@ def run_osint_engine(query: str, sources: list = None, refresh: bool = False) ->
         "sources": {},
     }
 
-    for source_name in source_names:
-        if source_name not in SOURCES:
-            results["sources"][source_name] = {
-                "present": False,
-                "error": f"Source '{source_name}' not found",
-            }
-            continue
+    # Query sources in parallel using ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        # Submit all source queries
+        futures = {}
+        for source_name in source_names:
+            if source_name not in SOURCES:
+                results["sources"][source_name] = {
+                    "present": False,
+                    "error": f"Source '{source_name}' not found",
+                }
+                continue
+            
+            source = SOURCES[source_name]
+            future = executor.submit(
+                _query_single_source,
+                source_name,
+                source,
+                ioc["type"],
+                ioc["value"],
+            )
+            futures[future] = source_name
+        
+        # Collect results as they complete
+        for future in as_completed(futures):
+            source_name, source_result = future.result()
+            results["sources"][source_name] = source_result
 
-        source = SOURCES[source_name]
-        source_result = source.query(ioc["type"], ioc["value"])
-        logger.debug("Source %s returned status=%s", source_name, source_result.get("query_status"))
-
-        results["sources"][source_name] = {
-            "present": _is_present(source_result),
-            "data": source_result,
-            "queried_at": datetime.now().isoformat(),
-        }
-
-    # Persist to cache and write output file.
+    # Persist to cache and write output file (only if not in batch mode)
     db_manager.set(query, results)
-    results["output_file"] = _write_output(results)
+    results["output_file"] = _write_output(results, write_individual_files=not batch_mode)
 
     return results
 
