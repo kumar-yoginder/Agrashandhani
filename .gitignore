@@ -103,3 +103,4 @@ docs/_build/
 
 # Editor backups
 *.orig
+outputs/*

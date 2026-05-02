@@ -1,5 +1,25 @@
 """
-Configuration module for OSINT Search Tool
+Configuration module for OSINT Search Tool.
+
+Manages all configuration settings including API keys, database connection
+strings, HTTP client parameters, IOC type definitions, and per-source
+timeouts. Configuration values are loaded from environment variables via
+the python-dotenv package.
+
+Database Backends:
+  - JSON file (default): data/threat_intel_db.json
+  - MongoDB: Set MONGODB_URI environment variable
+  - PostgreSQL: Set POSTGRES_URI environment variable
+
+API Keys:
+  Load all API keys from .env file or environment variables. Example:
+    VT_API_KEY=your-virustotal-key
+    OTX_API_KEY=your-otx-key
+    XFORCE_API_KEY=your-xforce-key
+    XFORCE_API_PASSWORD=your-xforce-password
+
+Author: Agrashandhani
+Version: 1.1
 """
 import os
 from dotenv import load_dotenv
@@ -7,21 +27,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # =====================================================
-# DATABASE
+# DATABASE CONFIGURATION
 # =====================================================
+
 DB_FILE = os.getenv("DB_FILE", "data/threat_intel_db.json")
 
-# Set MONGODB_URI to use MongoDB instead of the local JSON file.
-# Example: mongodb://user:pass@localhost:27017/threatintel
 MONGODB_URI = os.getenv("MONGODB_URI", "")
-
-# Set POSTGRES_URI to use PostgreSQL instead of the local JSON file.
-# Example: postgresql://user:pass@localhost:5432/threatintel
 POSTGRES_URI = os.getenv("POSTGRES_URI", "")
 
 # =====================================================
-# API KEYS & ENDPOINTS (Loaded once from .env)
+# API KEYS (Loaded once from .env)
 # =====================================================
+
 VT_KEY = os.getenv("VT_API_KEY", "")
 HA_KEY = os.getenv("HA_API_KEY", "")
 MB_API_KEY = os.getenv("MB_API_KEY", "")
@@ -36,7 +53,10 @@ GREYNOISE_API_KEY = os.getenv("GREYNOISE_API_KEY", "")
 XFORCE_API_KEY = os.getenv("XFORCE_API_KEY", "")
 XFORCE_API_PASSWORD = os.getenv("XFORCE_API_PASSWORD", "")
 
-# API URLs
+# =====================================================
+# API ENDPOINTS
+# =====================================================
+
 MB_API_URL = "https://mb-api.abuse.ch/api/v1/"
 VT_API_URL = "https://www.virustotal.com/api/v3"
 OTX_API_URL = "https://otx.alienvault.com/api/v1"
@@ -52,6 +72,7 @@ XFORCE_API_URL = "https://api.xforce.ibmcloud.com"
 # =====================================================
 # IOC TYPES REFERENCE
 # =====================================================
+
 IOC_TYPES = {
     "hash_md5": "MD5 Hash",
     "hash_sha1": "SHA1 Hash",
@@ -66,21 +87,23 @@ IOC_TYPES = {
     "malware_family": "Malware Family",
     "os": "Operating System",
     "cve": "CVE Identifier",
-    "unknown": "Unknown IOC Type"
+    "unknown": "Unknown IOC Type",
 }
 
 # =====================================================
 # HTTP CLIENT SETTINGS
 # =====================================================
-HTTP_TIMEOUT = 10  # Increased from 20 to handle slow APIs like OTX
-MAX_RETRIES = 1    # Increased from 3 for better resilience
+
+HTTP_TIMEOUT = 10
+MAX_RETRIES = 1
 BACKOFF_FACTOR = 1
 
 # =====================================================
 # PER-SOURCE TIMEOUTS (overrides HTTP_TIMEOUT if set)
 # =====================================================
+
 SOURCE_TIMEOUTS = {
-    "otx": 50,                    # OTX needs more time for reputation queries
+    "otx": 50,
     "hybrid_analysis": 35,
     "virustotal": 40,
     "greynoise": 45,

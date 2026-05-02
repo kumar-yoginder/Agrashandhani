@@ -13,16 +13,24 @@ import logging
 import os
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, Any, Callable, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
-from validators import IOCValidator
+from validators import classify
 from sources import SOURCES, get_available_sources
 from database import db_manager
 
 logger = logging.getLogger(__name__)
 
+# =====================================================
+# Configuration
+# =====================================================
+
 OUTPUT_DIR = "outputs"
-MAX_WORKERS = 6  # Number of parallel source queries
+MAX_WORKERS = 10  # Adjust based on expected load and API rate limits
+
+# =====================================================
+# Helper Functions
+# =====================================================
 
 
 def _ensure_output_dir() -> None:
@@ -137,15 +145,15 @@ def _query_single_source(
 
 
 def run_osint_engine(
-    query: str, 
-    sources: list = None, 
+    query: str,
+    sources: Optional[List[str]] = None,
     refresh: bool = False,
     batch_mode: bool = False,
-) -> dict:
+) -> Dict[str, Any]:
     """Search for an IOC across configured threat intelligence sources in parallel.
 
     Checks the local cache first (unless *refresh* is ``True``), then queries
-    each relevant source in parallel, persists the result to the cache and 
+    each relevant source in parallel, persists the result to the cache and
     optionally to a JSON output file, and returns the structured result.
 
     Args:
@@ -163,10 +171,11 @@ def run_osint_engine(
         - ``ioc_type`` (str): Detected IOC type.
         - ``timestamp`` (str): ISO-8601 timestamp of the search.
         - ``sources`` (dict): Per-source result dicts.
-        - ``output_file`` (str, optional): Path to the written JSON file (only if not batch_mode).
+        - ``output_file`` (str, optional): Path to the written JSON file
+          (only if not batch_mode).
         - ``error`` (str, optional): Present only when the IOC type is unknown.
     """
-    ioc = IOCValidator.classify(query)
+    ioc = classify(query)
 
     if ioc["type"] == "unknown":
         logger.warning("Unknown IOC type for query: %s", query)

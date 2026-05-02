@@ -108,7 +108,7 @@ class HybridAnalysisSource(Source):
         """Normalise a Hybrid Analysis API response.
 
         Args:
-            response: Raw dict from :class:`~clients.RateLimitedClient`.
+            response: Raw dict from :class:`~.clients.RateLimitedClient`.
 
         Returns:
             Normalised response dict (success, not_found, or error).

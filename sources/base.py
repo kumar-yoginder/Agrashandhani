@@ -8,7 +8,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from clients import RateLimitedClient
+from .clients import RateLimitedClient
 from config import SOURCE_TIMEOUTS, HTTP_TIMEOUT
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class Source(ABC):
 
     Attributes:
         name: Human-readable source identifier (e.g. ``"virustotal"``).
-        client: Shared :class:`~clients.RateLimitedClient` instance used for
+        client: Shared :class:`~.clients.RateLimitedClient` instance used for
             all HTTP calls made by this source.
         timeout: HTTP timeout for this specific source (in seconds).
 

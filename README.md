@@ -41,10 +41,13 @@ python main.py -c sample_iocs.csv
 - `-r, --refresh` — Force search and bypass cache
 - `-l, --list-sources` — List available sources
 - `--validate-only` — Validate inputs without searching
+- `--related` — Search for correlated/related indicators from OTX (find related hashes/IPs)
 
 ## Key Features
 
-✅ **Multi-Source Threat Intelligence** - Query 11 sources (VirusTotal, MalwareBazaar, Hybrid Analysis, MalShare, AlienVault OTX, Team Cymru, Any.run, SecurityTrails, Shodan, GreyNoise, IBM X-Force) simultaneously  
+✅ **Multi-Source Threat Intelligence** - Query 8 active sources (VirusTotal, MalwareBazaar, Hybrid Analysis, MalShare, AlienVault OTX, SecurityTrails, Shodan, GreyNoise) simultaneously  
+✅ **Intelligent Source Management** - Sources are automatically enabled/disabled based on credential availability in `.env`  
+✅ **Correlated Indicator Search** - Use `--related` flag to find related/correlated hashes and APT groups from OTX  
 ✅ **Intelligent Caching** - Timestamped local JSON database prevents redundant API calls  
 ✅ **14+ IOC Types** - MD5/SHA1/SHA256 hashes, IPv4/IPv6, domains, URLs, emails, CVEs, APTs, malware families, OS, countries  
 ✅ **Batch Processing** - Process CSV files with automatic header detection and type validation  
@@ -55,7 +58,9 @@ python main.py -c sample_iocs.csv
 
 ## Supported Sources
 
-Agrashandhani integrates **11 threat intelligence sources**. Each source is queried only for IOC types it supports.
+Agrashandhani integrates **8 threat intelligence sources**. Each source is queried only for IOC types it supports.
+
+**Sources are automatically enabled/disabled at runtime based on credential availability in .env** — if credentials are missing or empty, the source is skipped.
 
 | Source | Key Name | Hashes (MD5/SHA1/SHA256) | IPv4 | IPv6 | Domain | URL | Notes |
 |---|---|:---:|:---:|:---:|:---:|:---:|---|
@@ -63,13 +68,16 @@ Agrashandhani integrates **11 threat intelligence sources**. Each source is quer
 | **MalwareBazaar** | `malwarebazaar` | ✅ | | | | | Malware samples, YARA rules, malware families |
 | **Hybrid Analysis** | `hybrid_analysis` | ✅ | ✅ | | ✅ | ✅ | Sandbox analysis, file behavior, network indicators |
 | **MalShare** | `malshare` | ✅ | | | | | Malware sample database, analysis results |
-| **AlienVault OTX** | `otx` | ✅ | ✅ | ✅ | ✅ | ✅ | Threat pulses, passive DNS, CVE correlation |
-| **Team Cymru** | `cymru` | ✅ | ✅ | | | | Hash reputation, IP-to-ASN/BGP mapping |
-| **Any.run** | `anyrun` | ✅ | ✅ | | ✅ | ✅ | Dynamic sandbox analysis, behavioral results |
+| **AlienVault OTX** | `otx` | ✅ | ✅ | ✅ | ✅ | ✅ | Threat pulses, passive DNS, CVE correlation, **correlated indicators** |
 | **SecurityTrails** | `securitytrails` | | ✅ | | ✅ | | DNS records, WHOIS, subdomains, IP-to-hostname |
 | **Shodan** | `shodan` | | ✅ | | ✅ | | Open ports, services, banners, CVEs, DNS records |
 | **GreyNoise** | `greynoise` | | ✅ | | | | IP classification: benign / malicious / noise |
-| **IBM X-Force** | `xforce_ibm` | ✅ | ✅ | ✅ | ✅ | ✅ | Threat scoring, vulnerability intelligence |
+
+### Disabled Sources
+
+⛔ **Any.run** - Disabled: No proven API access for IOC searches (credentials commented in .env)  
+⛔ **Team Cymru** - Disabled: Valid API credentials not available (credentials commented in .env)  
+⛔ **IBM X-Force Exchange** - Disabled: Valid API credentials not available (credentials commented in .env)
 
 ### What each source searches for
 
@@ -80,10 +88,7 @@ Agrashandhani integrates **11 threat intelligence sources**. Each source is quer
 | MalwareBazaar | Malware sample details, YARA rule matches, malware family attribution |
 | Hybrid Analysis | Sandbox execution report, behavior analysis, file relationships |
 | MalShare | Sample details from community-uploaded malware corpus |
-| AlienVault OTX | File reputation, related threat pulses and adversary groups |
-| Team Cymru | AV detection rate and hash reputation score |
-| Any.run | Interactive sandbox analysis, process trees, network activity |
-| IBM X-Force | Malware classification, threat score, associated campaigns |
+| AlienVault OTX | File reputation, related threat pulses, correlated hashes, and adversary groups |
 
 
 
@@ -93,12 +98,9 @@ Agrashandhani integrates **11 threat intelligence sources**. Each source is quer
 | VirusTotal | IP reputation, WHOIS data, passive DNS, ASN information |
 | AlienVault OTX | IP reputation, geolocation, passive DNS, related pulses |
 | Hybrid Analysis | Network indicators associated with the IP |
-| Team Cymru | IP-to-ASN mapping, BGP prefix data, routing information |
-| Any.run | Threat intelligence for the IP from sandbox submissions |
 | SecurityTrails | Reverse DNS, hostname associations, historical DNS records |
 | Shodan | Open ports, running services, banners, CVEs, geolocation |
 | GreyNoise | IP classification (benign / malicious / background noise), tags |
-| IBM X-Force | IP reputation score, geolocation, threat categories |
 
 #### Domain Searches
 | Source | What you get |
@@ -106,10 +108,8 @@ Agrashandhani integrates **11 threat intelligence sources**. Each source is quer
 | VirusTotal | Domain reputation, DNS records, WHOIS, related URLs |
 | AlienVault OTX | Domain reputation, passive DNS, associated malware pulses |
 | Hybrid Analysis | Domain network indicators from sandbox submissions |
-| Any.run | Domain threat intelligence extracted from sandbox runs |
 | SecurityTrails | Current/historical DNS records, WHOIS, subdomain enumeration |
 | Shodan | DNS records, subdomains, associated IP addresses |
-| IBM X-Force | Domain threat score, category classification |
 
 #### URL Searches
 | Source | What you get |
@@ -117,8 +117,6 @@ Agrashandhani integrates **11 threat intelligence sources**. Each source is quer
 | VirusTotal | URL reputation, file downloads, redirects, AV detections |
 | AlienVault OTX | URL threat analysis, related threat pulses |
 | Hybrid Analysis | URL behavior, network activity from sandbox |
-| Any.run | URL analysis results from interactive sandbox submissions |
-| IBM X-Force | URL threat score, category classification |
 
 ## Adding a New Threat Intelligence Source
 
@@ -171,11 +169,9 @@ Agrashandhani/
 │   ├── malshare.py              # MalShare
 │   ├── otx.py                   # AlienVault OTX
 │   ├── cymru.py                 # Team Cymru
-│   ├── anyrun.py                # Any.run
 │   ├── securitytrails.py        # SecurityTrails
 │   ├── shodan.py                # Shodan
-│   ├── greynoise.py             # GreyNoise
-│   └── xforce_ibm.py            # IBM X-Force
+│   └── greynoise.py             # GreyNoise
 │
 ├── validators/                  # IOC validation & classification
 │   └── __init__.py              # IOCValidator class (14+ types)
@@ -192,7 +188,7 @@ Agrashandhani/
 
 ## Configuration
 
-Create a `.env` file in the project root with your API keys (copy `.env.example` as a starting point):
+Create a `.env` file in the project root with your API keys (copy `.env.example` as a starting point). **Leave credentials empty or commented to disable a source at runtime.**
 
 ```env
 # VirusTotal — https://www.virustotal.com/gui/my-apikey
@@ -210,13 +206,6 @@ MALSHARE_API_KEY=your_malshare_api_key
 # AlienVault OTX — https://otx.alienvault.com/account/profile
 OTX_API_KEY=your_otx_api_key
 
-# Team Cymru — https://hash.cymru.com/
-CYMRU_API_USERNAME=your_cymru_username
-CYMRU_API_PASSWORD=your_cymru_password
-
-# Any.run — https://app.any.run/
-ANYRUN_API_KEY=your_anyrun_api_key
-
 # SecurityTrails — https://securitytrails.com/app/account/credentials
 SECURITYTRAILS_API_KEY=your_securitytrails_api_key
 
@@ -226,16 +215,29 @@ SHODAN_API_KEY=your_shodan_api_key
 # GreyNoise — https://www.greynoise.io/account/signup
 GREYNOISE_API_KEY=your_greynoise_api_key
 
-# IBM X-Force Exchange — https://exchange.xforce.ibmcloud.com/settings/api
-XFORCE_API_KEY=your_xforce_api_key
-XFORCE_API_PASSWORD=your_xforce_api_password
+# To disable a source, comment out or empty its credentials:
+# VT_API_KEY=
+# SHODAN_API_KEY=
 ```
 
-All keys are optional — if a key is missing, that source is skipped with a descriptive message.
+### Intelligent Source Disabling
+
+Sources are **automatically enabled/disabled at runtime** based on credential availability:
+- If credentials are defined and non-empty, the source is enabled
+- If credentials are empty or commented out, the source is disabled at startup
+- Check logs for "Active sources" and "Disabled sources" information
+- **No code changes needed** — just manage credentials in `.env`
 
 ## Usage Notes
 
 - **Local Cache**: All results stored in `data/threat_intel_db.json` with ISO timestamps. Use `-r/--refresh` to bypass cache
+- **Correlated Indicator Search**: Use `--related` flag to find hashes/indicators correlated with a given IOC from OTX:
+  ```bash
+  python main.py <hash> --related              # Find related hashes
+  python main.py <hash> --related -v           # Verbose JSON output
+  python main.py <hash> --related -r           # Bypass cache
+  ```
+  This queries OTX for the malware family, APT groups, and related file hashes, then searches each related hash across all sources.
 - **Dependencies**: Minimal footprint - only `requests` and `python-dotenv` in production
 - **Extensibility**: Add new sources without modifying existing code - just extend `Source` class
 - **Integration**: Import and use: `from engine import run_osint_search`
