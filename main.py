@@ -26,6 +26,7 @@ from engine import run_osint_engine
 from input_handler import read_csv, validate_inputs
 from validators import classify
 from sources import SOURCES
+from utility.excel_exporter import export_to_excel
 
 # =====================================================
 # Configuration
@@ -158,8 +159,22 @@ def main() -> None:
         action="store_true",
         help="Use Cymru bulk hash search API when processing CSV file with hashes (requires --csv)",
     )
+    parser.add_argument(
+        "--output-excel",
+        type=str,
+        help="Output results to an Excel file (e.g., results.xlsx).",
+    )
+    parser.add_argument(
+        "--update-excel",
+        action="store_true",
+        help="Update an existing Excel file with new data. Requires --output-excel.",
+    )
 
     args = parser.parse_args()
+
+    # Process --output-excel argument: add .xlsx extension if not present
+    if args.output_excel and not args.output_excel.lower().endswith(".xlsx"):
+        args.output_excel += ".xlsx"
 
     # --list-sources flag
     if args.list_sources:
@@ -227,6 +242,11 @@ def _handle_csv_mode(args: argparse.Namespace) -> None:
     # Write batch output file (single consolidated file for all IOCs)
     output_file = _write_batch_results(results_list)
     print(f"\n[+] Results saved to: {output_file}")
+
+    if args.output_excel:
+        excel_output_path = export_to_excel(results_list, args.output_excel, args.update_excel)
+        if excel_output_path:
+            print(f"[+] Excel results saved to: {excel_output_path}")
 
     if args.verbose:
         print(json.dumps(results_list, indent=2))
@@ -462,6 +482,11 @@ def _handle_single_query_mode(args: argparse.Namespace) -> None:
         for source_name, result in output.get("sources", {}).items():
             status = "✓ Present" if result.get("present") else "✗ Not found"
             print(f"  {source_name}: {status}")
+
+    if args.output_excel:
+        excel_output_path = export_to_excel([output], args.output_excel, args.update_excel)
+        if excel_output_path:
+            print(f"[+] Excel results saved to: {excel_output_path}")
 
 
 if __name__ == "__main__":

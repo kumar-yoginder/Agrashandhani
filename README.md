@@ -42,15 +42,23 @@ python main.py -c sample_iocs.csv
 - `-l, --list-sources` — List available sources
 - `--validate-only` — Validate inputs without searching
 - `--related` — Search for correlated/related indicators from OTX (find related hashes/IPs)
+- `--cymru-bulk` — Use Cymru bulk hash search API with CSV file
+
+## Documentation
+
+For detailed information on how to integrate this tool into your own projects or how to contribute by adding new threat intelligence sources, please refer to:
+
+- [Integration and Development Guide](doc/INTEGRATION_AND_DEVELOPMENT.md)
 
 ## Key Features
 
-✅ **Multi-Source Threat Intelligence** - Query 8 active sources (VirusTotal, MalwareBazaar, Hybrid Analysis, MalShare, AlienVault OTX, SecurityTrails, Shodan, GreyNoise) simultaneously  
+✅ **Multi-Source Threat Intelligence** - Query 11 active sources (VirusTotal, MalwareBazaar, Hybrid Analysis, MalShare, AlienVault OTX, SecurityTrails, Shodan, GreyNoise, Team Cymru, Any.run, IBM X-Force) simultaneously  
 ✅ **Intelligent Source Management** - Sources are automatically enabled/disabled based on credential availability in `.env`  
 ✅ **Correlated Indicator Search** - Use `--related` flag to find related/correlated hashes and APT groups from OTX  
 ✅ **Intelligent Caching** - Timestamped local JSON database prevents redundant API calls  
 ✅ **14+ IOC Types** - MD5/SHA1/SHA256 hashes, IPv4/IPv6, domains, URLs, emails, CVEs, APTs, malware families, OS, countries  
 ✅ **Batch Processing** - Process CSV files with automatic header detection and type validation  
+✅ **Bulk Hash Search** - Use Cymru's optimized bulk API for efficient hash reputation lookups (1000 hashes per batch)
 ✅ **Modular Architecture** - Clean, extensible design for adding new sources  
 ✅ **Smart Rate Limiting** - Built-in exponential backoff and retry logic  
 ✅ **Multiple Output Formats** - Human-readable or verbose JSON for integration  
@@ -58,7 +66,7 @@ python main.py -c sample_iocs.csv
 
 ## Supported Sources
 
-Agrashandhani integrates **8 threat intelligence sources**. Each source is queried only for IOC types it supports.
+Agrashandhani integrates **11 threat intelligence sources**. Each source is queried only for IOC types it supports.
 
 **Sources are automatically enabled/disabled at runtime based on credential availability in .env** — if credentials are missing or empty, the source is skipped.
 
@@ -72,12 +80,9 @@ Agrashandhani integrates **8 threat intelligence sources**. Each source is queri
 | **SecurityTrails** | `securitytrails` | | ✅ | | ✅ | | DNS records, WHOIS, subdomains, IP-to-hostname |
 | **Shodan** | `shodan` | | ✅ | | ✅ | | Open ports, services, banners, CVEs, DNS records |
 | **GreyNoise** | `greynoise` | | ✅ | | | | IP classification: benign / malicious / noise |
-
-### Disabled Sources
-
-⛔ **Any.run** - Disabled: No proven API access for IOC searches (credentials commented in .env)  
-⛔ **Team Cymru** - Disabled: Valid API credentials not available (credentials commented in .env)  
-⛔ **IBM X-Force Exchange** - Disabled: Valid API credentials not available (credentials commented in .env)
+| **Team Cymru** | `cymru` | ✅ | ✅ | | | | Malware hash reputation, bulk hash search API |
+| **Any.run** | `anyrun` | ✅ | ✅ | | ✅ | ✅ | Interactive malware analysis, detonation results |
+| **IBM X-Force Exchange** | `xforce_ibm` | ✅ | ✅ | | | | Threat intelligence, vulnerabilities, ransomware |
 
 ### What each source searches for
 
@@ -215,6 +220,17 @@ SHODAN_API_KEY=your_shodan_api_key
 # GreyNoise — https://www.greynoise.io/account/signup
 GREYNOISE_API_KEY=your_greynoise_api_key
 
+# Team Cymru — https://www.team-cymru.com/
+CYMRU_API_USERNAME=your_cymru_username
+CYMRU_API_PASSWORD=your_cymru_password
+
+# Any.run — https://any.run/
+ANYRUN_API_KEY=your_anyrun_api_key
+
+# IBM X-Force Exchange — https://exchange.xforce.ibmcloud.com/
+XFORCE_API_KEY=your_xforce_api_key
+XFORCE_API_PASSWORD=your_xforce_password
+
 # To disable a source, comment out or empty its credentials:
 # VT_API_KEY=
 # SHODAN_API_KEY=
@@ -238,9 +254,14 @@ Sources are **automatically enabled/disabled at runtime** based on credential av
   python main.py <hash> --related -r           # Bypass cache
   ```
   This queries OTX for the malware family, APT groups, and related file hashes, then searches each related hash across all sources.
+- **Bulk Hash Search**: Use Cymru's optimized bulk API for efficient batch hash lookups:
+  ```bash
+  python main.py -c hashes.csv --cymru-bulk   # Bulk hash search (1000 hashes per batch)
+  python main.py -c hashes.csv --cymru-bulk -v # Verbose JSON output
+  ```
 - **Dependencies**: Minimal footprint - only `requests` and `python-dotenv` in production
 - **Extensibility**: Add new sources without modifying existing code - just extend `Source` class
-- **Integration**: Import and use: `from engine import run_osint_search`
+- **Integration**: Import and use: `from engine import run_osint_engine`
 - **Performance**: First query ~5-10s (API calls), subsequent queries <100ms (cache hits)
 - **Batch Processing**: CSV files auto-detect headers; supports single column or mixed formats
 
