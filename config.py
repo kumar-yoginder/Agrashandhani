@@ -52,6 +52,8 @@ SHODAN_API_KEY = os.getenv("SHODAN_API_KEY", "")
 GREYNOISE_API_KEY = os.getenv("GREYNOISE_API_KEY", "")
 XFORCE_API_KEY = os.getenv("XFORCE_API_KEY", "")
 XFORCE_API_PASSWORD = os.getenv("XFORCE_API_PASSWORD", "")
+FILESCAN_API_KEY = os.getenv("FILESCAN_API_KEY", "")
+THREATFOX_API_KEY = os.getenv("THREATFOX_AUTH_KEY", "")
 
 # =====================================================
 # API ENDPOINTS
@@ -68,6 +70,8 @@ SECURITYTRAILS_API_URL = "https://api.securitytrails.com/v1"
 SHODAN_API_URL = "https://api.shodan.io"
 GREYNOISE_API_URL = "https://api.greynoise.io/v3"
 XFORCE_API_URL = "https://api.xforce.ibmcloud.com"
+FILESCAN_API_URL = "https://www.filescan.io/api"
+THREATFOX_API_URL = "https://threatfox-api.abuse.ch/api/v1/"
 
 # =====================================================
 # IOC TYPES REFERENCE

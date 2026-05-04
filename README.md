@@ -33,24 +33,77 @@ python main.py -c sample_iocs.csv
 
 ## CLI Options
 
+### Basic Usage
 - `query` — Single IOC to search
 - `-c, --csv` — Read IOCs from CSV file
-- `-t, --type` — Force IOC type (`hash`, `ip`, `auto`)
-- `-s, --sources` — Comma-separated source list (e.g. `virustotal,malwarebazaar`)
-- `-v, --verbose` — Output JSON-formatted results
-- `-r, --refresh` — Force search and bypass cache
-- `-l, --list-sources` — List available sources
-- `--validate-only` — Validate inputs without searching
-- `--related` — Search for correlated/related indicators from OTX (find related hashes/IPs)
-- `--cymru-bulk` — Use Cymru bulk hash search API with CSV file
+
+### Source Selection
+- `-s, --sources` — Specify sources (comma-separated, e.g., `virustotal,shodan`)
+  - Leave blank (`--sources`) for interactive selection
+  - Use `--list-sources` to see available sources
+
+### IOC Type Control
+- `--ioc-types` — Filter by IOC types (comma-separated, e.g., `hash_md5,ip_v4`)
+  - Use `--list-ioc-types` to see all available types
+
+### Validation Control
+- `--validate-only` — Only validate and classify inputs (no search)
+- `--skip-validation` — Skip IOC validation entirely (use with caution)
+
+### Search Options
+- `-r, --refresh` — Force search and bypass local cache
+- `--related` — Find correlated/related indicators from OTX
+
+### Batch Processing
+- `--cymru-bulk` — Use Cymru bulk hash search API (requires `--csv`)
+
+### Output Options
+- `-v, --verbose` — Output full JSON results
+- `--output-excel` — Export results to Excel file (e.g., `results.xlsx`)
+- `--update-excel` — Append to existing Excel file (requires `--output-excel`)
+
+### Information
+- `-l, --list-sources` — List all available threat intelligence sources
+- `--list-ioc-types` — List all IOC types for filtering
+- `-h, --help` — Show complete help message
+
+## Quick Examples
+
+```bash
+# Search with automatic type detection
+python main.py 8.8.8.8
+
+# Interactive source selection
+python main.py 8.8.8.8 --sources
+
+# Specific sources only
+python main.py 8.8.8.8 --sources virustotal,shodan
+
+# Filter by IOC type
+python main.py abc123... --ioc-types hash_md5,hash_sha256
+
+# Batch from CSV (only hashes)
+python main.py -c indicators.csv --ioc-types hash_md5,hash_sha256
+
+# Skip validation for untrusted data
+python main.py -c data.csv --skip-validation
+
+# Export to Excel
+python main.py 8.8.8.8 --output-excel report.xlsx
+
+# Find related malware
+python main.py <file_hash> --related
+```
 
 ## Documentation
 
-For detailed information on how to integrate this tool into your own projects or how to contribute by adding new threat intelligence sources, please refer to:
+For comprehensive guides and documentation:
 
-- [Integration and Development Guide](doc/INTEGRATION_AND_DEVELOPMENT.md)
+- **[CLI Guide](doc/CLI_GUIDE.md)** — Complete command-line reference with examples and troubleshooting
+- **[Integration Guide](doc/INTEGRATION_AND_DEVELOPMENT.md)** — Detailed integration instructions and architecture overview
 
 ## Key Features
+
 
 ✅ **Multi-Source Threat Intelligence** - Query 11 active sources (VirusTotal, MalwareBazaar, Hybrid Analysis, MalShare, AlienVault OTX, SecurityTrails, Shodan, GreyNoise, Team Cymru, Any.run, IBM X-Force) simultaneously  
 ✅ **Intelligent Source Management** - Sources are automatically enabled/disabled based on credential availability in `.env`  

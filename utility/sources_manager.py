@@ -33,7 +33,8 @@ class SourceManager:
         "securitytrails": {"env_vars": ["SECURITYTRAILS_API_KEY"], "name": "SecurityTrails"},
         "shodan": {"env_vars": ["SHODAN_API_KEY"], "name": "Shodan"},
         "greynoise": {"env_vars": ["GREYNOISE_API_KEY"], "name": "GreyNoise"},
-        "xforce_ibm": {"env_vars": ["XFORCE_API_KEY", "XFORCE_API_PASSWORD"], "name": "X-Force IBM"}
+        "xforce_ibm": {"env_vars": ["XFORCE_API_KEY", "XFORCE_API_PASSWORD"], "name": "X-Force IBM"},
+        "filescan": {"env_vars": ["FILESCAN_API_KEY"], "name": "FileScan.io"}
     }
     
     def __init__(self, config_file: str = "disabled_sources_config.json", strict: bool = False):

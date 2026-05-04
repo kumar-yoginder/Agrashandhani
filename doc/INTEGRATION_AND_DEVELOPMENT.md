@@ -53,20 +53,157 @@ Edit the `.env` file to include your API keys:
 
 ### CLI Usage
 
-The primary entry point for the tool is `main.py`.
+The primary entry point for the tool is `main.py`. The tool displays a banner at startup and supports multiple modes of operation.
 
-- **Single IOC Search**:
-  ```bash
-  python main.py 8.8.8.8
-  ```
-- **Batch Processing from CSV**:
-  ```bash
-  python main.py -c samples/iocs.csv
-  ```
-- **Find Related Indicators (OTX)**:
-  ```bash
-  python main.py 8.8.8.8 --related
-  ```
+#### Basic Usage
+
+**Single IOC Search**:
+```bash
+python main.py 8.8.8.8
+python main.py <hash>
+python main.py example.com
+```
+
+**Batch Processing from CSV**:
+```bash
+python main.py -c samples/iocs.csv
+```
+
+**Find Related/Correlated Indicators (OTX)**:
+```bash
+python main.py <hash> --related
+```
+
+#### Advanced Options
+
+**Source Selection**:
+```bash
+# Specify sources explicitly (comma-separated)
+python main.py 8.8.8.8 --sources virustotal,shodan
+
+# Interactive source selection (prompts user to choose)
+python main.py 8.8.8.8 --sources
+
+# List available sources
+python main.py --list-sources
+```
+
+**IOC Type Filtering**:
+```bash
+# Search only for specific IOC types
+python main.py <value> --ioc-types hash_md5,hash_sha256
+python main.py 8.8.8.8 --ioc-types ip_v4
+
+# List all available IOC types
+python main.py --list-ioc-types
+```
+
+**Validation Control**:
+```bash
+# Skip IOC validation (use with caution)
+python main.py <value> --skip-validation
+
+# Only validate without searching
+python main.py <value> --validate-only
+
+# Skip validation in batch mode
+python main.py -c file.csv --skip-validation
+```
+
+**Bulk Processing**:
+```bash
+# Cymru bulk hash search for multiple hashes
+python main.py -c hashes.csv --cymru-bulk
+
+# Filter batch by IOC type
+python main.py -c file.csv --ioc-types hash_md5
+
+# Bypass cache (force fresh search)
+python main.py 8.8.8.8 --refresh
+python main.py -c file.csv --refresh
+```
+
+**Output Options**:
+```bash
+# Save to Excel
+python main.py <value> --output-excel results.xlsx
+
+# Append to existing Excel file
+python main.py <value> --output-excel results.xlsx --update-excel
+
+# Verbose JSON output
+python main.py <value> --verbose
+```
+
+#### Available IOC Types
+- `hash_md5` - MD5 Hash (32 hex characters)
+- `hash_sha1` - SHA1 Hash (40 hex characters)
+- `hash_sha256` - SHA256 Hash (64 hex characters)
+- `ip_v4` - IPv4 Address
+- `ip_v6` - IPv6 Address
+- `domain` - Domain Name
+- `url` - Full URL
+- `email` - Email Address
+- `cve` - CVE Identifier (CVE-YYYY-####)
+- `apt` - APT Group Name
+- `malware_family` - Malware Family Name
+- `country` - Country Name
+- `os` - Operating System
+- `unknown` - Unknown/Unclassified
+
+#### Available Threat Intelligence Sources
+The tool supports queries to multiple sources. Available sources are shown with:
+```bash
+python main.py --list-sources
+```
+
+Current sources include:
+- **VirusTotal** - Multi-hash/IP/Domain scanner
+- **MalwareBazaar** - Malware sample repository
+- **Hybrid Analysis** - Dynamic malware analysis
+- **MalShare** - Malware sample sharing
+- **OTX (AlienVault)** - Threat intelligence pulses
+- **Cymru** - IP-to-ASN mapping & hash reputation
+- **AnyRun** - Interactive malware sandbox
+- **SecurityTrails** - Domain/IP/DNS intelligence
+- **Shodan** - IoT device search engine
+- **GreyNoise** - Internet scan data & IP context
+- **X-Force (IBM)** - IBM X-Force threat intelligence
+- **FileScan** - File analysis & hashing service
+- **ThreatFox** - Malware/phishing IOC sharing
+
+#### Example Workflows
+
+**Search multiple sources for a file hash**:
+```bash
+python main.py abc123def456... --sources virustotal,malwarebazaar,hybrid_analysis
+```
+
+**Interactive source selection**:
+```bash
+python main.py 8.8.8.8 --sources
+# Tool prompts: "Select source(s) by number (comma-separated) or 'a' for all, or 'q' to quit:"
+```
+
+**Process only MD5 and SHA256 hashes from batch**:
+```bash
+python main.py -c indicators.csv --ioc-types hash_md5,hash_sha256
+```
+
+**Validate CSV without searching (no validation)**:
+```bash
+python main.py -c indicators.csv --validate-only --skip-validation
+```
+
+**Find related malware samples**:
+```bash
+python main.py <file_hash> --related
+```
+
+**Export batch results to Excel**:
+```bash
+python main.py -c indicators.csv --output-excel threat_report.xlsx
+```
 
 ### Programmatic Integration
 
@@ -83,6 +220,15 @@ if result.get("sources"):
     for source, data in result["sources"].items():
         if data.get("present"):
             print(f"Found in {source}: {data['data']}")
+
+# Query specific sources only
+result = run_osint_engine("8.8.8.8", sources=["virustotal", "shodan"])
+
+# Bypass cache
+result = run_osint_engine("8.8.8.8", refresh=True)
+
+# Batch mode
+result = run_osint_engine("8.8.8.8", batch_mode=True)
 ```
 
 ---

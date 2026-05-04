@@ -5,7 +5,7 @@ API Reference: https://hybrid-analysis.com/docs/api/v2
 Official API Docs: https://hybrid-analysis.com/knowledge-base/searching-the-database-using-api
 
 Author: Agrashandhani
-Version: 1.2
+Version: 1.1
 """
 import logging
 
@@ -18,19 +18,23 @@ logger = logging.getLogger(__name__)
 class HybridAnalysisSource(Source):
     """Hybrid Analysis (Falcon Sandbox) source - Search API Implementation.
 
+    Implements two primary search endpoints:
+    - GET /search/hash: Direct hash search (MD5, SHA1, SHA256)
+    - POST /search/terms: Advanced search with query filters
+
     Supported IOC types:
-    - ``hash_md5`` / ``hash_sha1`` / ``hash_sha256``: file hash lookup via /search/hash
-    - ``ip_v4``, ``domain``, ``url``: Search endpoint (limited support)
+    - ``hash_md5`` / ``hash_sha1`` / ``hash_sha256``: file hash lookup via GET /search/hash
+    - ``ip_v4``: IPv4 address search via POST /search/terms
+    - ``domain``: Domain search via POST /search/terms
+    - ``url``: URL search via POST /search/terms
 
     Rate limits (Public Sandbox):
     - 5 queries per minute
     - 200 queries per hour
 
-    API v2 Features:
-    - GET /search/hash: Direct hash search (recommended)
-    - POST /search/hash: Hash search (deprecated, use GET instead)
-    - POST /search/hashes: Batch hash search
-    - POST /search/terms: Advanced search with query terms
+    API v2 Endpoints (v2.35.0+):
+    - GET /search/hash: Direct hash search (recommended for hash IOCs)
+    - POST /search/terms: Advanced multi-parameter search (for domains, IPs, URLs, etc.)
 
     Attributes:
         api_url: Hybrid Analysis API base URL (v2).
@@ -44,6 +48,10 @@ class HybridAnalysisSource(Source):
 
     def query(self, ioc_type: str, value: str) -> dict:
         """Query the Hybrid Analysis Search API.
+
+        Routes to appropriate endpoint based on IOC type:
+        - Hash types: GET /search/hash
+        - Other types (IP, domain, URL): POST /search/terms
 
         Args:
             ioc_type: IOC classification (``hash_*``, ``ip_v4``, ``domain``, ``url``).
@@ -67,21 +75,23 @@ class HybridAnalysisSource(Source):
             # Route to appropriate search method
             if ioc_type.startswith("hash_"):
                 return self._search_hash(value, headers)
-            
-            # Other IOC types not directly supported by /search/hash
-            # Fall back to not found for now (Search API is primarily for hashes)
-            return self._not_found_response(
-                f"Search API primarily supports hash lookups. IOC type '{ioc_type}' not supported."
-            )
+            elif ioc_type in ("ip_v4", "domain", "url"):
+                return self._search_terms(ioc_type, value, headers)
+            else:
+                return self._not_found_response(
+                    f"IOC type '{ioc_type}' not supported. Supported types: "
+                    "hash_md5, hash_sha1, hash_sha256, ip_v4, domain, url"
+                )
 
         except Exception as exc:
             logger.exception("[hybrid_analysis] Unexpected error querying %s", value)
             return self._error_response(f"Unexpected error: {exc}", log=False)
 
     def _search_hash(self, hash_value: str, headers: dict) -> dict:
-        """Search for a file hash using the Hybrid Analysis /search/hash endpoint.
+        """Search for a file hash using the Hybrid Analysis GET /search/hash endpoint.
 
-        Uses the recommended GET method (POST is deprecated).
+        Recommended method for direct hash lookups (v2.35.0+).
+        Supports MD5, SHA1, or SHA256 hashes.
 
         Args:
             hash_value: MD5, SHA1, or SHA256 hash.
@@ -102,10 +112,50 @@ class HybridAnalysisSource(Source):
             timeout=self.timeout,
         )
         
-        return self._normalize_response(response)
+        return self._normalize_hash_response(response)
 
-    def _normalize_response(self, response: dict) -> dict:
-        """Normalise a Hybrid Analysis API response.
+    def _search_terms(self, ioc_type: str, value: str, headers: dict) -> dict:
+        """Search using the Hybrid Analysis POST /search/terms endpoint.
+
+        Advanced search for domains, IPs, URLs, and other threat indicators.
+        Maps IOC types to appropriate query parameters.
+
+        Args:
+            ioc_type: IOC type (ip_v4, domain, url).
+            value: The IOC value to search for.
+            headers: HTTP headers including the API key.
+
+        Returns:
+            Normalised response dict.
+        """
+        url = f"{self.api_url}/search/terms"
+        
+        # Map IOC types to query parameters
+        params = {}
+        if ioc_type == "ip_v4":
+            params["host"] = value  # Host/IP parameter
+        elif ioc_type == "domain":
+            params["domain"] = value  # Domain parameter
+        elif ioc_type == "url":
+            params["url"] = value  # URL substring parameter
+        
+        response = self.client.request(
+            "POST",
+            url,
+            headers=headers,
+            data=params,
+            timeout=self.timeout,
+        )
+        
+        return self._normalize_terms_response(response)
+
+    def _normalize_hash_response(self, response: dict) -> dict:
+        """Normalise a Hybrid Analysis GET /search/hash API response.
+
+        The /search/hash endpoint returns a single object with response_code:
+        - response_code: 1 = found, 0 = not found
+        - response: "found" or "not found"
+        - results: Object with file details (if found)
 
         Args:
             response: Raw dict from :class:`~.clients.RateLimitedClient`.
@@ -134,5 +184,48 @@ class HybridAnalysisSource(Source):
         # Unknown response format
         return self._not_found_response(
             f"Unexpected response format: {response}"
+        )
+
+    def _normalize_terms_response(self, response: dict | list) -> dict:
+        """Normalise a Hybrid Analysis POST /search/terms API response.
+
+        The /search/terms endpoint returns a list of matching samples:
+        - Returns: List of sample objects (each with sha256, md5, etc.)
+        - Empty list: No matches found
+        - Error dict: Request failed
+
+        Args:
+            response: Raw dict or list from :class:`~.clients.RateLimitedClient`.
+
+        Returns:
+            Normalised response dict (success, not_found, or error).
+        """
+        # Handle error responses from the client
+        if isinstance(response, dict) and "error" in response:
+            error_msg = response.get("error", "Unknown error")
+            return self._error_response(
+                f"Hybrid Analysis API error: {error_msg}",
+                log=False
+            )
+
+        # Handle list responses (expected format)
+        if isinstance(response, list):
+            if not response:  # Empty list means no matches
+                return self._not_found_response(
+                    "No matching samples found in Hybrid Analysis database"
+                )
+            # Found results
+            return self._success_response({"results": response})
+
+        # Handle unexpected response format
+        if isinstance(response, dict) and not response:
+            return self._not_found_response(
+                "No matching samples found in Hybrid Analysis database"
+            )
+
+        # Unknown response format
+        return self._error_response(
+            f"Unexpected response format: {response}",
+            log=False
         )
 

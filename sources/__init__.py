@@ -17,12 +17,14 @@ from sources.securitytrails import SecurityTrailsSource
 from sources.shodan import ShodanSource
 from sources.greynoise import GreyNoiseSource
 from sources.xforce_ibm import XForceIBMSource
+from sources.filescan import FileScanSource
+from sources.threatfox import ThreatFoxSource
 
 from config import (
     VT_KEY, MB_API_KEY, HA_KEY, MALSHARE_API_KEY, OTX_API_KEY,
     CYMRU_API_USERNAME, CYMRU_API_PASSWORD, ANYRUN_API_KEY,
     SECURITYTRAILS_API_KEY, SHODAN_API_KEY, GREYNOISE_API_KEY,
-    XFORCE_API_KEY, XFORCE_API_PASSWORD
+    XFORCE_API_KEY, XFORCE_API_PASSWORD, FILESCAN_API_KEY, THREATFOX_API_KEY
 )
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,8 @@ _SOURCE_CREDENTIALS = {
     "shodan": SHODAN_API_KEY,
     "greynoise": GREYNOISE_API_KEY,
     "xforce_ibm": (XFORCE_API_KEY and XFORCE_API_PASSWORD),
+    "filescan": FILESCAN_API_KEY,
+    "threatfox": THREATFOX_API_KEY,
 }
 
 def _has_credentials(source_name: str) -> bool:
@@ -71,6 +75,8 @@ _source_instances = {
     "shodan": ShodanSource(),
     "greynoise": GreyNoiseSource(),
     "xforce_ibm": XForceIBMSource(),
+    "filescan": FileScanSource(),
+    "threatfox": ThreatFoxSource(),
 }
 
 # Populate SOURCES only with configured sources
@@ -99,7 +105,9 @@ _SOURCE_SUPPORTED_TYPES = {
     "securitytrails": {"ip_v4", "domain"},
     "shodan": {"ip_v4", "domain"},
     "greynoise": {"ip_v4"},
-    "xforce_ibm": {"hash_md5", "hash_sha1", "hash_sha256", "ip_v4", "ip_v6", "domain", "url"}  # DISABLED: Valid XFORCE_API_KEY not available
+    "xforce_ibm": {"hash_md5", "hash_sha1", "hash_sha256", "ip_v4", "ip_v6", "domain", "url"},  # DISABLED: Valid XFORCE_API_KEY not available
+    "filescan": {"hash_md5", "hash_sha1", "hash_sha256"},
+    "threatfox": {"hash_md5", "hash_sha256", "ip_v4", "ip_v6", "domain", "url"},
 }
 
 
