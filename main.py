@@ -3,7 +3,8 @@ OSINT Search Tool - Main CLI Entry Point.
 
 Provides a command-line interface for querying Indicators of Compromise (IOCs)
 across multiple threat intelligence sources. Supports single queries, batch
-processing from CSV files, and correlated indicator discovery via OTX.
+processing from CSV files, correlated indicator discovery via OTX, and malware
+family searches.
 
 Usage:
   python main.py <ioc>                 - Search for a single IOC
@@ -12,9 +13,13 @@ Usage:
   python main.py -c file.csv --cymru-bulk  - Bulk Cymru hash search
   python main.py <ioc> --sources       - Interactive source selection
   python main.py <ioc> --ioc-types hash_md5  - Filter by IOC type
+  python main.py -smf "emotet"         - Search for malware family by name
+  python main.py --smf-category "Ransomware" - Search by category
+  python main.py --smf-severity critical - Search by severity
+  python main.py --smf-list-categories - List all malware categories
 
 Author: Agrashandhani
-Version: 1.2
+Version: 1.3
 """
 import argparse
 import json
@@ -29,6 +34,7 @@ from input_handler import read_csv, validate_inputs
 from validators import classify
 from sources import SOURCES
 from utility.excel_exporter import export_to_excel
+from utility.malware_db_query import MalwareFamiliesDB, print_results
 from config import IOC_TYPES
 
 # =====================================================
@@ -217,6 +223,167 @@ def _write_batch_results(results_list: List[Dict[str, Any]]) -> str:
 # =====================================================
 
 
+def _handle_malware_family_search(args: argparse.Namespace) -> None:
+    """Handle malware family search operations.
+    
+    Supports multiple search modes:
+    - By name (substring or exact match)
+    - By category
+    - By severity
+    - By time period
+    - By APT actor
+    - List available options
+    
+    Args:
+        args: Parsed CLI arguments namespace.
+    """
+    print("[*] Initializing malware families database...")
+    
+    try:
+        db = MalwareFamiliesDB()
+    except RuntimeError as exc:
+        logger.error("Cannot open malware families database: %s", exc)
+        print(f"[-] Error: {exc}")
+        sys.exit(1)
+    
+    # Handle list options
+    if args.smf_list_categories:
+        print("\n[+] Available Malware Categories:")
+        print("=" * 80)
+        for cat in sorted(db.get_categories()):
+            count = len(db.search_by_category(cat))
+            print(f"  • {cat:<30} ({count} families)")
+        print("=" * 80)
+        return
+    
+    if args.smf_list_periods:
+        print("\n[+] Available Time Periods:")
+        print("=" * 80)
+        for period in db.get_periods():
+            count = len(db.search_by_period(period))
+            print(f"  • {period:<20} ({count} families)")
+        print("=" * 80)
+        return
+    
+    if args.smf_list_apts:
+        print("\n[+] Tracked APT Actors:")
+        print("=" * 80)
+        for apt in sorted(db.get_apts()):
+            count = len(db.search_by_apt(apt))
+            print(f"  • {apt:<35} ({count} families)")
+        print("=" * 80)
+        return
+    
+    if args.smf_stats:
+        print("\n" + "=" * 80)
+        print("MALWARE FAMILIES DATABASE STATISTICS")
+        print("=" * 80)
+        print(f"Total Families:        {len(db.data['malware_families'])}")
+        print(f"Categories:            {len(db.get_categories())}")
+        print(f"APT Actors:            {len(db.get_apts())}")
+        print(f"Time Periods:          {len(db.get_periods())}")
+        print("\nDistribution by Severity:")
+        for severity in ["critical", "high", "medium"]:
+            count = len(db.search_by_severity(severity))
+            pct = (count / len(db.data['malware_families'])) * 100
+            print(f"  • {severity:<10}: {count:>3} ({pct:.1f}%)")
+        
+        print("\nTop 5 Categories:")
+        categories_count = [(cat, len(db.search_by_category(cat))) for cat in db.get_categories()]
+        for cat, count in sorted(categories_count, key=lambda x: x[1], reverse=True)[:5]:
+            print(f"  • {cat:<30}: {count} families")
+        print("=" * 80)
+        return
+    
+    # Handle search/detail options
+    if args.smf_detail:
+        family_id = args.smf_detail
+        print(f"\n[*] Searching for family ID: {family_id}...")
+        family = db.get_family_by_id(family_id)
+        if family:
+            db.print_family(family)
+        else:
+            print(f"[-] Family ID {family_id} not found")
+        return
+    
+    # Handle searches with progress messages
+    results = []
+    search_mode = None
+    search_query = None
+    
+    if args.smf_name:
+        search_mode = "by name"
+        search_query = args.smf_name
+        print(f"[*] Searching malware families {search_mode}: '{search_query}'...")
+        results = db.search_by_name(args.smf_name)
+    elif args.smf_category:
+        search_mode = "by category"
+        search_query = args.smf_category
+        print(f"[*] Searching malware families {search_mode}: '{search_query}'...")
+        results = db.search_by_category(args.smf_category)
+    elif args.smf_severity:
+        search_mode = "by severity"
+        search_query = args.smf_severity
+        print(f"[*] Searching malware families {search_mode}: '{search_query}'...")
+        results = db.search_by_severity(args.smf_severity)
+    elif args.smf_period:
+        search_mode = "by time period"
+        search_query = args.smf_period
+        print(f"[*] Searching malware families {search_mode}: '{search_query}'...")
+        results = db.search_by_period(args.smf_period)
+    elif args.smf_apt:
+        search_mode = "by APT actor"
+        search_query = args.smf_apt
+        print(f"[*] Searching malware families {search_mode}: '{search_query}'...")
+        results = db.search_by_apt(args.smf_apt)
+    else:
+        print("[-] No search criteria provided. Use --search-malware-family to search by name")
+        print("[*] Available options:")
+        print("    --smf-category  - Search by category")
+        print("    --smf-severity  - Search by severity (critical, high, medium)")
+        print("    --smf-period    - Search by time period")
+        print("    --smf-apt       - Search by APT actor")
+        print("    --smf-list-categories - List all categories")
+        print("    --smf-list-periods - List all time periods")
+        print("    --smf-list-apts - List all APT actors")
+        return
+    
+    # Display results with user feedback
+    if results:
+        print(f"\n[+] Search completed. Found {len(results)} result(s)")
+        print_results(results)
+        
+        # Save results to file
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        sanitized_query = _sanitize_filename(search_query)
+        output_file = os.path.join(OUTPUT_DIR, f"malware_families_{sanitized_query}_{timestamp}.json")
+        
+        try:
+            with open(output_file, "w", encoding="utf-8") as fh:
+                json.dump({
+                    "search_mode": search_mode,
+                    "search_query": search_query,
+                    "timestamp": timestamp,
+                    "total_results": len(results),
+                    "results": results
+                }, fh, indent=2)
+            logger.info("Malware family search results written to %s", output_file)
+            print(f"\n[+] Results saved to: {output_file}")
+        except OSError as exc:
+            logger.error("Failed to write malware family search results: %s", exc)
+            print(f"[-] Error saving results: {exc}")
+        
+        # Display detailed info for single result
+        if len(results) == 1 and not args.smf_detail:
+            response = input("\n[?] Show detailed information? (y/n): ").strip().lower()
+            if response == 'y':
+                db.print_family(results[0])
+    else:
+        print(f"[-] No malware families found {search_mode}: '{search_query}'")
+        print("[*] Try using --smf-list-categories to see available categories")
+        print("[*] Or use --smf-stats to see database statistics")
+
+
 def main() -> None:
     """Parse CLI arguments and run the OSINT search tool."""
     print_banner()
@@ -246,8 +413,15 @@ Examples:
   Related indicators:
     python main.py <hash> --related
     
-  List sources:
-    python main.py --list-sources
+  Malware family search:
+    python main.py -smf "emotet"                          # Search by name
+    python main.py --smf-category "Ransomware"            # Search by category
+    python main.py --smf-severity critical                # Search by severity
+    python main.py --smf-period "2019-2021"               # Search by time period
+    python main.py --smf-apt "APT28"                       # Search by APT actor
+    python main.py --smf-detail 1                          # Show family details
+    python main.py --smf-list-categories                   # List categories
+    python main.py --smf-stats                             # Database statistics
         """
     )
     
@@ -335,6 +509,84 @@ Examples:
         help="Use Cymru bulk hash search API (requires --csv with hash file)",
     )
     
+    # Malware family search options
+    parser.add_argument(
+        "-smf", "--search-malware-family",
+        type=str,
+        metavar="NAME",
+        dest="smf_name",
+        help="Search for malware families by name (e.g., 'emotet', 'ransomware')",
+    )
+    
+    parser.add_argument(
+        "--smf-category",
+        type=str,
+        metavar="CATEGORY",
+        dest="smf_category",
+        help="Search malware families by category (e.g., 'Ransomware', 'Trojan')",
+    )
+    
+    parser.add_argument(
+        "--smf-severity",
+        type=str,
+        choices=["critical", "high", "medium"],
+        metavar="LEVEL",
+        dest="smf_severity",
+        help="Filter malware families by severity level (critical, high, medium)",
+    )
+    
+    parser.add_argument(
+        "--smf-period",
+        type=str,
+        metavar="PERIOD",
+        dest="smf_period",
+        help="Search malware families by time period (e.g., '2019-2021')",
+    )
+    
+    parser.add_argument(
+        "--smf-apt",
+        type=str,
+        metavar="APT_NAME",
+        dest="smf_apt",
+        help="Search malware families associated with APT actor (e.g., 'APT28')",
+    )
+    
+    parser.add_argument(
+        "--smf-detail",
+        type=int,
+        metavar="FAMILY_ID",
+        dest="smf_detail",
+        help="Show detailed information for a specific malware family ID",
+    )
+    
+    parser.add_argument(
+        "--smf-list-categories",
+        action="store_true",
+        dest="smf_list_categories",
+        help="List all available malware categories",
+    )
+    
+    parser.add_argument(
+        "--smf-list-periods",
+        action="store_true",
+        dest="smf_list_periods",
+        help="List all available time periods in the database",
+    )
+    
+    parser.add_argument(
+        "--smf-list-apts",
+        action="store_true",
+        dest="smf_list_apts",
+        help="List all tracked APT actors",
+    )
+    
+    parser.add_argument(
+        "--smf-stats",
+        action="store_true",
+        dest="smf_stats",
+        help="Display malware families database statistics",
+    )
+    
     # Informational options
     parser.add_argument(
         "-l", "--list-sources",
@@ -362,6 +614,13 @@ Examples:
     # Process --output-excel argument: add .xlsx extension if not present
     if args.output_excel and not args.output_excel.lower().endswith(".xlsx"):
         args.output_excel += ".xlsx"
+
+    # Malware family search mode
+    if (args.smf_name or args.smf_category or args.smf_severity or args.smf_period 
+        or args.smf_apt or args.smf_detail or args.smf_list_categories 
+        or args.smf_list_periods or args.smf_list_apts or args.smf_stats):
+        _handle_malware_family_search(args)
+        return
 
     # Bulk mode: Cymru bulk hash search from CSV
     if args.csv and args.cymru_bulk:
