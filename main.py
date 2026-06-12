@@ -35,6 +35,7 @@ from validators import classify
 from sources import SOURCES
 from utility.excel_exporter import export_to_excel
 from utility.malware_db_query import MalwareFamiliesDB, print_results
+from utility.malware_source_search import MalwareFamilySearchAggregator, print_malware_search_results
 from config import IOC_TYPES
 
 # =====================================================
@@ -221,6 +222,74 @@ def _write_batch_results(results_list: List[Dict[str, Any]]) -> str:
 # =====================================================
 # CLI Command Handlers
 # =====================================================
+
+
+# =====================================================
+# CLI Command Handlers
+# =====================================================
+
+
+def _handle_malware_source_search(args: argparse.Namespace) -> None:
+    """Handle malware family search across external sources.
+    
+    Searches multiple threat intelligence sources for malware family
+    information and aggregates results.
+    
+    Supported search modes:
+    - By hash: Search for malware family info using file hash
+    - By family name: Search for family across sources
+    - By tag: Search by malware classification tag
+    
+    Args:
+        args: Parsed CLI arguments namespace.
+    """
+    aggregator = MalwareFamilySearchAggregator()
+    
+    # Parse sources if provided
+    sources_to_use = None
+    if hasattr(args, 'smfs_sources') and args.smfs_sources:
+        sources_to_use = [s.strip() for s in args.smfs_sources.split(",")]
+    
+    # Hash-based search (primary method)
+    if args.smfs_hash:
+        print("[*] Searching for malware information by hash across threat intelligence sources...")
+        results = aggregator.search_hash(args.smfs_hash, sources_to_use)
+        print_malware_search_results(results)
+        
+        # Save results to file
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        safe_hash = _sanitize_filename(args.smfs_hash[:16])
+        output_file = os.path.join(OUTPUT_DIR, f"malware_source_search_{safe_hash}_{timestamp}.json")
+        try:
+            with open(output_file, "w", encoding="utf-8") as fh:
+                json.dump(results, fh, indent=2)
+            logger.info("Malware source search results written to %s", output_file)
+            print(f"\n[+] Results saved to: {output_file}")
+        except OSError as exc:
+            logger.error("Failed to write search results: %s", exc)
+        return
+    
+    # Family name search
+    if args.smfs_family:
+        print("[*] Searching for malware family by name across sources...")
+        results = aggregator.search_family_name(args.smfs_family, sources_to_use)
+        print_malware_search_results(results)
+        return
+    
+    # Tag-based search
+    if args.smfs_tag:
+        print("[*] Searching for malware by tag across sources...")
+        results = aggregator.search_tag(args.smfs_tag, sources_to_use)
+        print_malware_search_results(results)
+        return
+    
+    # No search criteria provided
+    print("[-] No search criteria provided for external malware source search")
+    print("[*] Available options:")
+    print("    --smfs-hash <hash>            - Search by file hash (MD5/SHA1/SHA256)")
+    print("    --smfs-family <name>          - Search by family name")
+    print("    --smfs-tag <tag>              - Search by malware classification tag")
+    print("    --smfs-sources <sources>      - Specific sources to query (comma-separated)")
 
 
 def _handle_malware_family_search(args: argparse.Namespace) -> None:
@@ -509,6 +578,40 @@ Examples:
         help="Use Cymru bulk hash search API (requires --csv with hash file)",
     )
     
+    # External Malware Source Search options
+    parser.add_argument(
+        "--smfs-hash",
+        type=str,
+        metavar="HASH",
+        dest="smfs_hash",
+        help="Search for malware across threat sources by file hash (MD5/SHA1/SHA256)",
+    )
+    
+    parser.add_argument(
+        "--smfs-family",
+        type=str,
+        metavar="FAMILY",
+        dest="smfs_family",
+        help="Search for malware family across threat sources by name",
+    )
+    
+    parser.add_argument(
+        "--smfs-tag",
+        type=str,
+        metavar="TAG",
+        dest="smfs_tag",
+        help="Search for malware across threat sources by classification tag",
+    )
+    
+    parser.add_argument(
+        "--smfs-sources",
+        type=str,
+        metavar="SOURCES",
+        dest="smfs_sources",
+        help="Comma-separated list of specific sources to query for malware search "
+             "(e.g., malwarebazaar,otx,xforce_ibm). Default: all available sources",
+    )
+    
     # Malware family search options
     parser.add_argument(
         "-smf", "--search-malware-family",
@@ -614,6 +717,11 @@ Examples:
     # Process --output-excel argument: add .xlsx extension if not present
     if args.output_excel and not args.output_excel.lower().endswith(".xlsx"):
         args.output_excel += ".xlsx"
+
+    # External malware source search mode
+    if args.smfs_hash or args.smfs_family or args.smfs_tag:
+        _handle_malware_source_search(args)
+        return
 
     # Malware family search mode
     if (args.smf_name or args.smf_category or args.smf_severity or args.smf_period 
